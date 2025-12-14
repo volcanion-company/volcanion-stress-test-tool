@@ -2,24 +2,30 @@ package engine
 
 import (
 	"context"
-	"errors"
+	"net/http"
 	"sync"
 	"time"
 
+	"github.com/volcanion-company/volcanion-stress-test-tool/internal/domain"
 	"github.com/volcanion-company/volcanion-stress-test-tool/internal/domain/model"
 	"github.com/volcanion-company/volcanion-stress-test-tool/internal/logger"
+	"github.com/volcanion-company/volcanion-stress-test-tool/internal/metrics"
 	"go.uber.org/zap"
 )
 
 var (
-	ErrTestAlreadyRunning = errors.New("test is already running")
-	ErrTestNotFound       = errors.New("test not found")
+	ErrTestAlreadyRunning = domain.ErrAlreadyRunning
+	ErrTestNotFound       = domain.NewNotFoundError("test", "")
 )
 
 // LoadGenerator manages multiple concurrent test runs
 type LoadGenerator struct {
-	activeTests map[string]*TestExecution
-	mu          sync.RWMutex
+	activeTests  map[string]*TestExecution
+	mu           sync.RWMutex
+	sharedClient *http.Client
+	shutdownCtx  context.Context
+	shutdownFunc context.CancelFunc
+	collector    *metrics.Collector
 }
 
 // TestExecution holds the runtime state of a test
@@ -34,9 +40,31 @@ type TestExecution struct {
 }
 
 // NewLoadGenerator creates a new load generator instance
-func NewLoadGenerator() *LoadGenerator {
+func NewLoadGenerator(collector *metrics.Collector) *LoadGenerator {
+	// Create shared HTTP client with optimized transport
+	sharedTransport := &http.Transport{
+		MaxIdleConns:        500,
+		MaxIdleConnsPerHost: 100,
+		MaxConnsPerHost:     200,
+		IdleConnTimeout:     90 * time.Second,
+		DisableCompression:  false,
+		DisableKeepAlives:   false,
+		ForceAttemptHTTP2:   true,
+	}
+
+	sharedClient := &http.Client{
+		Transport: sharedTransport,
+		// Timeout is set per-request in worker
+	}
+
+	shutdownCtx, shutdownFunc := context.WithCancel(context.Background())
+
 	return &LoadGenerator{
-		activeTests: make(map[string]*TestExecution),
+		activeTests:  make(map[string]*TestExecution),
+		sharedClient: sharedClient,
+		shutdownCtx:  shutdownCtx,
+		shutdownFunc: shutdownFunc,
+		collector:    collector,
 	}
 }
 
@@ -53,8 +81,8 @@ func (lg *LoadGenerator) StartTest(runID string, plan *model.TestPlan) (*model.M
 	// Create metrics
 	metrics := model.NewMetrics(runID)
 
-	// Create scheduler
-	scheduler := NewScheduler(plan, metrics)
+	// Create scheduler with shared client
+	scheduler := NewScheduler(plan, metrics, lg.sharedClient, lg.collector)
 
 	// Create test execution context
 	ctx, cancel := context.WithCancel(context.Background())
@@ -70,6 +98,9 @@ func (lg *LoadGenerator) StartTest(runID string, plan *model.TestPlan) (*model.M
 	}
 
 	lg.activeTests[runID] = execution
+
+	// Update active tests gauge
+	lg.collector.SetActiveTests(len(lg.activeTests))
 
 	// Start the test in background
 	go lg.runTest(execution)
@@ -157,6 +188,7 @@ func (lg *LoadGenerator) cleanupTest(runID string) {
 	lg.mu.Lock()
 	defer lg.mu.Unlock()
 	delete(lg.activeTests, runID)
+	lg.collector.SetActiveTests(len(lg.activeTests))
 }
 
 // GetActiveTestCount returns the number of currently running tests
@@ -164,4 +196,49 @@ func (lg *LoadGenerator) GetActiveTestCount() int {
 	lg.mu.RLock()
 	defer lg.mu.RUnlock()
 	return len(lg.activeTests)
+}
+
+// Shutdown stops all active tests and waits for completion
+func (lg *LoadGenerator) Shutdown(timeout time.Duration) error {
+	logger.Log.Info("Shutting down load generator",
+		zap.Int("active_tests", lg.GetActiveTestCount()))
+
+	// Signal shutdown to all tests
+	lg.shutdownFunc()
+
+	// Get all active test IDs
+	lg.mu.RLock()
+	testIDs := make([]string, 0, len(lg.activeTests))
+	for id := range lg.activeTests {
+		testIDs = append(testIDs, id)
+	}
+	lg.mu.RUnlock()
+
+	// Stop each test
+	for _, runID := range testIDs {
+		_ = lg.StopTest(runID)
+	}
+
+	// Wait for all tests to complete with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		if lg.GetActiveTestCount() == 0 {
+			logger.Log.Info("All tests stopped")
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			logger.Log.Warn("Shutdown timeout, forcing cleanup",
+				zap.Int("remaining_tests", lg.GetActiveTestCount()))
+			return ctx.Err()
+		case <-ticker.C:
+			// Continue waiting
+		}
+	}
 }

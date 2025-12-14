@@ -25,17 +25,24 @@ type Metrics struct {
 	StatusCodes     map[int]int64    `json:"status_codes"`
 	Errors          map[string]int64 `json:"errors,omitempty"`
 	LastUpdated     time.Time        `json:"last_updated"`
+	StartTime       time.Time        `json:"-"` // For calculating live RPS
+	lastReqCount    int64            // Last request count for RPS calculation
+	lastRPSUpdate   time.Time        // Last time RPS was updated
 	Mu              sync.RWMutex     `json:"-"`
 }
 
 // NewMetrics creates a new Metrics instance
 func NewMetrics(runID string) *Metrics {
+	now := time.Now()
 	return &Metrics{
-		RunID:        runID,
-		MinLatencyMs: -1,
-		StatusCodes:  make(map[int]int64),
-		Errors:       make(map[string]int64),
-		LastUpdated:  time.Now(),
+		RunID:         runID,
+		MinLatencyMs:  -1,
+		StatusCodes:   make(map[int]int64),
+		Errors:        make(map[string]int64),
+		LastUpdated:   now,
+		StartTime:     now,
+		lastReqCount:  0,
+		lastRPSUpdate: now,
 	}
 }
 
@@ -75,6 +82,31 @@ func (m *Metrics) SetActiveWorkers(count int) {
 	m.Mu.Lock()
 	defer m.Mu.Unlock()
 	m.ActiveWorkers = count
+}
+
+// UpdateLiveMetrics updates current RPS and total duration
+func (m *Metrics) UpdateLiveMetrics() {
+	m.Mu.Lock()
+	defer m.Mu.Unlock()
+
+	now := time.Now()
+
+	// Update total duration
+	m.TotalDurationMs = now.Sub(m.StartTime).Milliseconds()
+
+	// Calculate current RPS (requests in last second)
+	elapsedSinceLastUpdate := now.Sub(m.lastRPSUpdate).Seconds()
+	if elapsedSinceLastUpdate >= 1.0 {
+		reqsSinceLastUpdate := m.TotalRequests - m.lastReqCount
+		m.CurrentRPS = float64(reqsSinceLastUpdate) / elapsedSinceLastUpdate
+		m.lastReqCount = m.TotalRequests
+		m.lastRPSUpdate = now
+	}
+
+	// Calculate average RPS over total duration
+	if m.TotalDurationMs > 0 {
+		m.RequestsPerSec = float64(m.TotalRequests) / (float64(m.TotalDurationMs) / 1000.0)
+	}
 }
 
 // GetSnapshot returns a copy of current metrics (thread-safe)

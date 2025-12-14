@@ -34,7 +34,7 @@ func (h *TestRunHandler) StartTest(c *gin.Context) {
 	run, err := h.service.StartTest(req.PlanID)
 	if err != nil {
 		logger.Log.Error("Failed to start test", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		MapErrorToHTTP(c, err)
 		return
 	}
 
@@ -47,7 +47,7 @@ func (h *TestRunHandler) StopTest(c *gin.Context) {
 
 	if err := h.service.StopTest(id); err != nil {
 		logger.Log.Error("Failed to stop test", zap.String("id", id), zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		MapErrorToHTTP(c, err)
 		return
 	}
 
@@ -73,7 +73,7 @@ func (h *TestRunHandler) GetTestRun(c *gin.Context) {
 	run, err := h.service.GetTestRun(id)
 	if err != nil {
 		logger.Log.Warn("Test run not found", zap.String("id", id), zap.Error(err))
-		c.JSON(http.StatusNotFound, gin.H{"error": "test run not found"})
+		MapErrorToHTTP(c, err)
 		return
 	}
 
@@ -87,7 +87,7 @@ func (h *TestRunHandler) GetTestMetrics(c *gin.Context) {
 	metrics, err := h.service.GetTestMetrics(id)
 	if err != nil {
 		logger.Log.Warn("Metrics not found", zap.String("id", id), zap.Error(err))
-		c.JSON(http.StatusNotFound, gin.H{"error": "metrics not found"})
+		MapErrorToHTTP(c, err)
 		return
 	}
 

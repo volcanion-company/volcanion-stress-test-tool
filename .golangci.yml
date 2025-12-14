@@ -1,0 +1,140 @@
+# golangci-lint configuration
+# https://golangci-lint.run/usage/configuration/
+
+run:
+  timeout: 5m
+  issues-exit-code: 1
+  tests: true
+  skip-dirs:
+    - vendor
+    - web
+    - docs
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  sort-results: true
+
+linters:
+  enable:
+    - errcheck       # Check for unchecked errors
+    - gosimple       # Simplify code
+    - govet          # Vet examines Go source code
+    - ineffassign    # Detects ineffectual assignments
+    - staticcheck    # Static analysis
+    - typecheck      # Type checking
+    - unused         # Check for unused code
+    - bodyclose      # Check HTTP response body is closed
+    - dogsled        # Check for too many blank identifiers
+    - dupl           # Check for duplicated code
+    - errname        # Check error naming convention
+    - errorlint      # Find problems with error wrapping
+    - exhaustive     # Check exhaustiveness of enum switch statements
+    - exportloopref  # Check for pointers to loop variables
+    - gocognit       # Compute cognitive complexity
+    - goconst        # Find repeated strings that could be constants
+    - gocritic       # Opinionated linter
+    - gocyclo        # Compute cyclomatic complexity
+    - godot          # Check comments end with a period
+    - gofmt          # Check code is formatted
+    - goimports      # Check imports are sorted
+    - gosec          # Security checker
+    - misspell       # Find commonly misspelled words
+    - nakedret       # Find naked returns
+    - nilerr         # Find code returning nil when err is not nil
+    - noctx          # Find HTTP requests without context
+    - prealloc       # Find slice declarations that could be preallocated
+    - predeclared    # Find shadowed predeclared identifiers
+    - revive         # Fast, configurable linter
+    - sqlclosecheck  # Check sql.Rows and sql.Stmt are closed
+    - unconvert      # Remove unnecessary type conversions
+    - unparam        # Find unused function parameters
+    - whitespace     # Check for unnecessary whitespace
+
+  disable:
+    - funlen         # Too restrictive
+    - lll            # Line length - too restrictive
+    - wsl            # Whitespace linter - too opinionated
+    - gochecknoinits # Allow init functions
+    - gochecknoglobals # Allow globals for config/metrics
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+  govet:
+    check-shadowing: true
+
+  gocyclo:
+    min-complexity: 15
+
+  gocognit:
+    min-complexity: 20
+
+  dupl:
+    threshold: 150
+
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+
+  misspell:
+    locale: US
+
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - hugeParam
+      - rangeValCopy
+
+  gosec:
+    excludes:
+      - G104 # Audit errors not checked
+      - G304 # File path provided as taint input
+
+  revive:
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: increment-decrement
+      - name: indent-error-flow
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: var-declaration
+      - name: var-naming
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - dupl
+        - gosec
+        - goconst
+        - gocognit
+        - errcheck
+
+    # Exclude known issues in generated files
+    - path: mock_
+      linters:
+        - dupl
+
+  max-issues-per-linter: 50
+  max-same-issues: 3
+  new: false

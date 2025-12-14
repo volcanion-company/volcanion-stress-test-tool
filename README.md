@@ -1,556 +1,392 @@
 # Volcanion Stress Test Tool
 
-A high-performance, web-based API stress testing tool built with Go. This tool allows you to configure, execute, and monitor load tests against HTTP APIs with real-time metrics and Prometheus integration.
+<p align="center">
+  <img src="docs/logo.png" alt="Volcanion Logo" width="200">
+</p>
+
+<p align="center">
+  <strong>A powerful, distributed HTTP load testing tool with real-time monitoring</strong>
+</p>
+
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#usage">Usage</a> •
+  <a href="#documentation">Documentation</a> •
+  <a href="#contributing">Contributing</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go" alt="Go Version">
+  <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat&logo=react" alt="React Version">
+  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
+  <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome">
+</p>
+
+---
 
 ## Features
 
-- 🚀 **High Performance**: Built on Go's goroutines for efficient concurrent load generation
-- 📊 **Real-time Metrics**: Live monitoring of test execution with percentile calculations (P50, P75, P95, P99)
-- 🎯 **Flexible Configuration**: Define test plans with custom headers, body, users, ramp-up time, and duration
-- 📈 **Prometheus Integration**: Export metrics to Prometheus for visualization and monitoring
-- 🏗️ **Clean Architecture**: Hexagonal architecture for maintainability and extensibility
-- 💾 **In-Memory Storage**: Fast in-memory repositories (easily replaceable with database)
-- 🔄 **Worker Pool**: Efficient worker pool management with rate control
-- 📝 **Structured Logging**: JSON-formatted logs with zap
+### 🚀 High Performance
+- **Concurrent workers** - Scale up to 1000+ concurrent virtual users
+- **Connection pooling** - Efficient HTTP client with keep-alive connections
+- **Low memory footprint** - Optimized for long-running tests
 
-## Architecture
+### 📊 Real-time Monitoring
+- **Live metrics dashboard** - Watch test progress in real-time via WebSocket
+- **Prometheus integration** - Export metrics for alerting and analysis
+- **Grafana dashboards** - Pre-built visualizations for test results
 
-The project follows Clean Architecture principles with clear separation of concerns:
+### 🔒 Enterprise Security
+- **JWT authentication** - Secure API access with role-based permissions
+- **API key support** - Machine-to-machine authentication
+- **Rate limiting** - Protect your API from abuse
+- **Audit logging** - Track all operations with sensitive data filtering
 
+### 🛠 Developer Experience
+- **REST API** - Full-featured API with OpenAPI 3.0 documentation
+- **Web UI** - Modern React dashboard for managing tests
+- **CLI tool** - Run tests from the command line
+- **Docker support** - One-command deployment with docker-compose
+
+### 📈 Observability
+- **Structured logging** - JSON logs with request tracing
+- **Distributed tracing** - OpenTelemetry integration with Jaeger
+- **Health checks** - Kubernetes-ready health endpoints
+
+---
+
+## Quick Start
+
+### Using Docker Compose (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/volcanion-company/volcanion-stress-test-tool.git
+cd volcanion-stress-test-tool
+
+# Start all services
+docker-compose up -d
+
+# Access the services
+# Web UI:      http://localhost
+# API:         http://localhost:8080
+# Grafana:     http://localhost:3000 (admin/admin)
+# Prometheus:  http://localhost:9090
+# Jaeger:      http://localhost:16686
 ```
-cmd/
-  server/
-    main.go                 # Application entry point
 
-internal/
-  api/
-    handler/                # HTTP request handlers
-    router/                 # Route configuration
-  domain/
-    model/                  # Domain models and DTOs
-    service/                # Business logic
-  engine/
-    load_generator.go       # Manages test executions
-    scheduler.go            # Coordinates workers
-    worker.go               # HTTP request executor
-  metrics/
-    collector.go            # Prometheus metrics
-  storage/
-    repository/             # Storage interfaces and implementations
-  config/                   # Configuration management
-  logger/                   # Logging setup
+### Using Pre-built Binary
+
+```bash
+# Download latest release
+curl -LO https://github.com/volcanion-company/volcanion-stress-test-tool/releases/latest/download/volcanion-linux-amd64
+
+# Make executable
+chmod +x volcanion-linux-amd64
+
+# Run a quick test
+./volcanion-linux-amd64 run --url https://httpbin.org/get --users 10 --duration 30s
 ```
 
-## Prerequisites
-
-- Go >= 1.22
-- No external dependencies required (uses in-memory storage)
+---
 
 ## Installation
 
-1. Clone the repository:
-```powershell
+### Prerequisites
+
+- Go 1.22+ (for building from source)
+- Node.js 20+ (for frontend development)
+- PostgreSQL 16+ (or use Docker)
+- Docker & Docker Compose (optional)
+
+### From Source
+
+```bash
+# Clone repository
 git clone https://github.com/volcanion-company/volcanion-stress-test-tool.git
 cd volcanion-stress-test-tool
+
+# Build backend
+make build
+
+# Build frontend
+cd web && npm ci && npm run build && cd ..
+
+# Run server
+./dist/volcanion-stress-test
 ```
 
-2. Install dependencies:
-```powershell
-go mod tidy
+### Docker Images
+
+```bash
+# Build all images
+make docker-build-all
+
+# Or pull from registry
+docker pull ghcr.io/volcanion-company/volcanion-stress-test:latest
+docker pull ghcr.io/volcanion-company/volcanion-stress-test-web:latest
 ```
 
-3. Run the server:
-```powershell
-go run cmd/server/main.go
+---
+
+## Usage
+
+### Web UI
+
+The web interface provides a user-friendly way to:
+- Create and manage test plans
+- Monitor running tests in real-time
+- View historical test results
+- Generate reports
+
+Access at `http://localhost` after starting with docker-compose.
+
+### REST API
+
+```bash
+# Login and get token
+TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin"}' | jq -r '.token')
+
+# Create a test plan
+curl -X POST http://localhost:8080/api/v1/test-plans \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "API Load Test",
+    "target_url": "https://httpbin.org/get",
+    "method": "GET",
+    "concurrent_users": 50,
+    "duration_seconds": 60,
+    "ramp_up_seconds": 10
+  }'
+
+# Start a test run
+curl -X POST http://localhost:8080/api/v1/test-plans/{plan_id}/run \
+  -H "Authorization: Bearer $TOKEN"
+
+# Get live metrics via WebSocket
+wscat -c "ws://localhost:8080/api/v1/ws/metrics?token=$TOKEN"
 ```
 
-The server will start on port 8080 by default.
+### CLI Tool
+
+```bash
+# Run a simple test
+volcanion run \
+  --url https://api.example.com/endpoint \
+  --method POST \
+  --body '{"key":"value"}' \
+  --users 100 \
+  --duration 5m \
+  --ramp-up 30s
+
+# Run from config file
+volcanion run --config test-plan.yaml
+
+# Export results
+volcanion report --run-id abc123 --format html --output report.html
+```
+
+---
 
 ## Configuration
 
-Configure the application using environment variables:
+### Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SERVER_PORT` | `8080` | HTTP server port |
-| `LOG_LEVEL` | `info` | Log level (debug, info, warn, error) |
+| `ENVIRONMENT` | `development` | Environment (development/staging/production) |
+| `SERVER_PORT` | `8080` | API server port |
+| `DATABASE_DSN` | - | PostgreSQL connection string |
+| `JWT_SECRET` | - | **Required in production** - JWT signing secret |
+| `AUTH_ENABLED` | `true` | Enable authentication |
+| `RATE_LIMIT_ENABLED` | `true` | Enable rate limiting |
+| `RATE_LIMIT_PER_SECOND` | `10` | Requests per second per IP |
+| `LOG_LEVEL` | `info` | Log level (debug/info/warn/error) |
+| `ALLOWED_ORIGINS` | `localhost` | CORS allowed origins |
 | `MAX_WORKERS` | `1000` | Maximum concurrent workers |
-| `DEFAULT_TIMEOUT_MS` | `30000` | Default HTTP timeout in milliseconds |
-| `METRICS_ENABLED` | `true` | Enable Prometheus metrics |
 
-Example:
-```powershell
-$env:LOG_LEVEL="debug"
-$env:SERVER_PORT="9090"
-go run cmd/server/main.go
-```
-
-## API Documentation
-
-### Health Check
-
-**GET** `/health`
-
-Returns server health status.
-
-**Response:**
-```json
-{
-  "status": "ok",
-  "service": "volcanion-stress-test-tool"
-}
-```
-
-### Test Plan Endpoints
-
-#### Create Test Plan
-
-**POST** `/api/test-plans`
-
-Create a new test plan configuration.
-
-**Request Body:**
-```json
-{
-  "name": "API Load Test",
-  "target_url": "https://api.example.com/endpoint",
-  "method": "POST",
-  "headers": {
-    "Content-Type": "application/json",
-    "Authorization": "Bearer token123"
-  },
-  "body": "{\"key\":\"value\"}",
-  "users": 100,
-  "ramp_up_sec": 10,
-  "duration_sec": 60,
-  "timeout_ms": 5000
-}
-```
-
-**Response:**
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "API Load Test",
-  "target_url": "https://api.example.com/endpoint",
-  "method": "POST",
-  "headers": {
-    "Content-Type": "application/json",
-    "Authorization": "Bearer token123"
-  },
-  "body": "{\"key\":\"value\"}",
-  "users": 100,
-  "ramp_up_sec": 10,
-  "duration_sec": 60,
-  "timeout_ms": 5000,
-  "created_at": "2025-12-14T10:00:00Z"
-}
-```
-
-#### Get All Test Plans
-
-**GET** `/api/test-plans`
-
-Retrieve all test plans.
-
-#### Get Test Plan by ID
-
-**GET** `/api/test-plans/:id`
-
-Retrieve a specific test plan.
-
-### Test Run Endpoints
-
-#### Start Test
-
-**POST** `/api/test-runs/start`
-
-Start a new test run based on a test plan.
-
-**Request Body:**
-```json
-{
-  "plan_id": "550e8400-e29b-41d4-a716-446655440000"
-}
-```
-
-**Response:**
-```json
-{
-  "id": "660e8400-e29b-41d4-a716-446655440001",
-  "plan_id": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "running",
-  "start_at": "2025-12-14T10:05:00Z",
-  "created_at": "2025-12-14T10:05:00Z"
-}
-```
-
-#### Stop Test
-
-**POST** `/api/test-runs/:id/stop`
-
-Stop a running test.
-
-**Response:**
-```json
-{
-  "message": "test stopped successfully"
-}
-```
-
-#### Get All Test Runs
-
-**GET** `/api/test-runs`
-
-Retrieve all test runs.
-
-#### Get Test Run by ID
-
-**GET** `/api/test-runs/:id`
-
-Retrieve a specific test run.
-
-#### Get Test Metrics
-
-**GET** `/api/test-runs/:id/metrics`
-
-Retrieve metrics for a test run (final or stored metrics).
-
-**Response:**
-```json
-{
-  "run_id": "660e8400-e29b-41d4-a716-446655440001",
-  "total_requests": 5000,
-  "success_requests": 4950,
-  "failed_requests": 50,
-  "total_duration_ms": 60000,
-  "min_latency_ms": 45.2,
-  "max_latency_ms": 523.8,
-  "avg_latency_ms": 125.3,
-  "p50_latency_ms": 112.5,
-  "p75_latency_ms": 145.8,
-  "p95_latency_ms": 234.2,
-  "p99_latency_ms": 387.6,
-  "requests_per_sec": 83.33,
-  "current_rps": 85.2,
-  "active_workers": 100,
-  "status_codes": {
-    "200": 4950,
-    "500": 50
-  },
-  "errors": {},
-  "last_updated": "2025-12-14T10:06:00Z"
-}
-```
-
-#### Get Live Metrics
-
-**GET** `/api/test-runs/:id/live`
-
-Retrieve real-time metrics for a running test.
-
-### Prometheus Metrics
-
-**GET** `/metrics`
-
-Prometheus-formatted metrics endpoint.
-
-**Metrics Available:**
-- `http_request_duration_seconds` - HTTP request latency histogram
-- `http_requests_total` - Total number of HTTP requests
-- `http_requests_failed_total` - Total number of failed requests
-- `stress_test_active_tests` - Number of currently active tests
-- `stress_test_active_workers` - Number of currently active workers
-
-## Quick Start Examples
-
-### Example 1: Simple GET Request Test
-
-```powershell
-# Create test plan
-$testPlan = @{
-    name = "Simple GET Test"
-    target_url = "https://httpbin.org/get"
-    method = "GET"
-    users = 50
-    ramp_up_sec = 5
-    duration_sec = 30
-    timeout_ms = 5000
-} | ConvertTo-Json
-
-$plan = Invoke-RestMethod -Uri "http://localhost:8080/api/test-plans" -Method POST -Body $testPlan -ContentType "application/json"
-
-# Start test
-$startTest = @{
-    plan_id = $plan.id
-} | ConvertTo-Json
-
-$run = Invoke-RestMethod -Uri "http://localhost:8080/api/test-runs/start" -Method POST -Body $startTest -ContentType "application/json"
-
-# Monitor live metrics
-Start-Sleep -Seconds 2
-Invoke-RestMethod -Uri "http://localhost:8080/api/test-runs/$($run.id)/live"
-
-# Get final metrics after test completes
-Start-Sleep -Seconds 35
-Invoke-RestMethod -Uri "http://localhost:8080/api/test-runs/$($run.id)/metrics"
-```
-
-### Example 2: POST Request with Headers
-
-```powershell
-# Create test plan for POST request
-$testPlan = @{
-    name = "POST API Test"
-    target_url = "https://httpbin.org/post"
-    method = "POST"
-    headers = @{
-        "Content-Type" = "application/json"
-        "X-Custom-Header" = "test-value"
-    }
-    body = '{"message":"Hello, World!","timestamp":1234567890}'
-    users = 100
-    ramp_up_sec = 10
-    duration_sec = 60
-    timeout_ms = 5000
-} | ConvertTo-Json -Depth 3
-
-$plan = Invoke-RestMethod -Uri "http://localhost:8080/api/test-plans" -Method POST -Body $testPlan -ContentType "application/json"
-
-# Start test
-$startTest = @{
-    plan_id = $plan.id
-} | ConvertTo-Json
-
-$run = Invoke-RestMethod -Uri "http://localhost:8080/api/test-runs/start" -Method POST -Body $startTest -ContentType "application/json"
-
-Write-Host "Test started with ID: $($run.id)"
-Write-Host "Monitor at: http://localhost:8080/api/test-runs/$($run.id)/live"
-```
-
-### Example 3: Stop a Running Test
-
-```powershell
-# Stop test
-$runId = "your-run-id-here"
-Invoke-RestMethod -Uri "http://localhost:8080/api/test-runs/$runId/stop" -Method POST
-```
-
-### Example 4: Using curl (Linux/Mac/Git Bash)
-
-```bash
-# Create test plan
-curl -X POST http://localhost:8080/api/test-plans \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "API Stress Test",
-    "target_url": "https://httpbin.org/delay/1",
-    "method": "GET",
-    "users": 200,
-    "ramp_up_sec": 20,
-    "duration_sec": 120,
-    "timeout_ms": 10000
-  }'
-
-# Start test (replace PLAN_ID)
-curl -X POST http://localhost:8080/api/test-runs/start \
-  -H "Content-Type: application/json" \
-  -d '{"plan_id": "PLAN_ID"}'
-
-# Get live metrics (replace RUN_ID)
-curl http://localhost:8080/api/test-runs/RUN_ID/live
-
-# Stop test
-curl -X POST http://localhost:8080/api/test-runs/RUN_ID/stop
-```
-
-## Load Generator Engine Details
-
-### How It Works
-
-1. **Test Plan Creation**: Define the target URL, HTTP method, headers, body, and load parameters
-2. **Worker Spawning**: The scheduler spawns workers according to the ramp-up configuration
-3. **Request Execution**: Each worker executes HTTP requests continuously until the test duration expires
-4. **Metrics Collection**: Workers report latency and status to the centralized metrics collector
-5. **Percentile Calculation**: After test completion, percentiles are calculated from all recorded latencies
-
-### Concurrency Model
-
-- **Goroutines**: Each worker runs in its own goroutine
-- **Channels**: Used for work distribution and coordination
-- **Context**: Manages cancellation and timeout
-- **No Blocking**: Non-blocking architecture for maximum throughput
-
-### Rate Control
-
-The tool uses a ticker-based approach for request generation:
-- Request channel receives work items at a controlled rate
-- Workers pull from the channel when available
-- If all workers are busy, requests queue in the channel (buffered)
-- This prevents overwhelming the system or the target
-
-## Performance Characteristics
-
-- **Capable of 10,000+ RPS** on modern hardware
-- **Low memory footprint** with efficient goroutine management
-- **Configurable worker pool** to match system resources
-- **HTTP connection pooling** with Keep-Alive for efficiency
-- **Percentile calculations** without storing all individual requests in memory (sampled)
-
-## Extending to Distributed Load Testing
-
-To extend this tool for distributed load testing:
-
-### 1. Architecture Changes
-
-```
-                    ┌─────────────────┐
-                    │  Master Node    │
-                    │  (Coordinator)  │
-                    └────────┬────────┘
-                             │
-              ┌──────────────┼──────────────┐
-              │              │              │
-         ┌────▼────┐    ┌────▼────┐    ┌───▼─────┐
-         │ Worker  │    │ Worker  │    │ Worker  │
-         │ Node 1  │    │ Node 2  │    │ Node N  │
-         └─────────┘    └─────────┘    └─────────┘
-```
-
-### 2. Required Changes
-
-**Master Node:**
-- Add worker node registration
-- Distribute test plans to workers
-- Aggregate metrics from all workers
-- Coordinate test start/stop
-
-**Worker Node:**
-- Register with master
-- Receive test plans via RPC/HTTP
-- Execute local load generation
-- Stream metrics back to master
-
-**Communication:**
-- Use gRPC for efficient RPC communication
-- Or REST API for simplicity
-- Implement heartbeat for worker health monitoring
-
-**Metrics Aggregation:**
-- Stream metrics from workers to master
-- Aggregate in real-time
-- Calculate combined percentiles
-
-### 3. Implementation Steps
-
-1. **Add gRPC definitions**:
-```protobuf
-service LoadTestService {
-  rpc RegisterWorker(WorkerInfo) returns (WorkerRegistration);
-  rpc DistributeTest(TestPlan) returns (TestAck);
-  rpc StreamMetrics(stream Metrics) returns (MetricsAck);
-  rpc StopTest(TestID) returns (StopAck);
-}
-```
-
-2. **Modify LoadGenerator** to support distributed mode
-3. **Add worker discovery** (etcd, Consul, or simple HTTP registry)
-4. **Implement metrics aggregation** layer
-5. **Add master node API** for cluster management
-
-### 4. Deployment
-
-Use Docker and Kubernetes for distributed deployment:
+### Example Configuration
 
 ```yaml
-# master-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: stress-test-master
-spec:
-  replicas: 1
-  template:
-    spec:
-      containers:
-      - name: master
-        image: volcanion-stress-test:latest
-        args: ["--mode=master"]
-        ports:
-        - containerPort: 8080
-        - containerPort: 9090  # gRPC
+# config.yaml
+server:
+  port: 8080
+  environment: production
 
----
-# worker-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: stress-test-worker
-spec:
-  replicas: 10  # Scale workers as needed
-  template:
-    spec:
-      containers:
-      - name: worker
-        image: volcanion-stress-test:latest
-        args: ["--mode=worker", "--master=master-service:9090"]
+database:
+  dsn: postgres://user:pass@localhost:5432/volcanion?sslmode=require
+  max_conns: 25
+  max_idle_conns: 5
+
+auth:
+  enabled: true
+  jwt_secret: ${JWT_SECRET}
+  jwt_duration_hours: 24
+
+rate_limit:
+  enabled: true
+  requests_per_second: 10
+
+logging:
+  level: info
+  format: json
+
+tracing:
+  enabled: true
+  endpoint: http://jaeger:4317
 ```
 
-## Troubleshooting
+---
 
-### High Memory Usage
+## Architecture
 
-- Reduce `users` count in test plan
-- Decrease `duration_sec`
-- Adjust `MAX_WORKERS` environment variable
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Web Browser                              │
+│                    (React + TanStack Query)                      │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │ HTTP/WebSocket
+┌──────────────────────────┴──────────────────────────────────────┐
+│                         Nginx                                    │
+│                  (Reverse Proxy + Static)                        │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+┌──────────────────────────┴──────────────────────────────────────┐
+│                      API Server (Gin)                            │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐   │
+│  │  Auth   │ │ CORS    │ │Rate Lim │ │ Logging │ │ Tracing │   │
+│  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘   │
+│       └───────────┴───────────┴───────────┴───────────┘         │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    Handlers                               │   │
+│  │  TestPlan │ TestRun │ Scenario │ Report │ Auth │ WS      │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    Services                               │   │
+│  │  TestService │ ScenarioService │ ReportService            │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                 Load Test Engine                          │   │
+│  │  Scheduler │ Workers │ Metrics │ Template                 │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+┌──────────────────────────┴──────────────────────────────────────┐
+│                      PostgreSQL                                  │
+│              (Test Plans, Runs, Results)                         │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-### Connection Errors
+---
 
-- Check `timeout_ms` setting
-- Verify target URL is accessible
-- Check firewall and network settings
-- Increase timeout for slow endpoints
+## Documentation
 
-### Low RPS
+| Document | Description |
+|----------|-------------|
+| [API Reference](docs/API.md) | REST API documentation |
+| [OpenAPI Spec](docs/openapi.yaml) | OpenAPI 3.0 specification |
+| [Architecture](docs/ARCHITECTURE.md) | System architecture details |
+| [Quick Start](docs/QUICKSTART.md) | Getting started guide |
+| [Code Review](docs/review.md) | Code quality assessment |
+| [TODO](docs/todo.md) | Roadmap and task tracking |
 
-- Increase `users` count
-- Reduce `ramp_up_sec`
-- Check if target server is the bottleneck
-- Verify network bandwidth
+---
+
+## Development
+
+### Project Structure
+
+```
+volcanion-stress-test-tool/
+├── cmd/                    # Application entry points
+│   ├── server/             # API server
+│   └── volcanion/          # CLI tool
+├── internal/               # Private application code
+│   ├── api/                # REST API handlers & router
+│   ├── auth/               # JWT, API keys, passwords
+│   ├── config/             # Configuration management
+│   ├── domain/             # Domain models & services
+│   ├── engine/             # Load test engine
+│   ├── middleware/         # HTTP middleware stack
+│   ├── storage/            # Database repositories
+│   ├── tracing/            # OpenTelemetry setup
+│   └── validation/         # Input validation
+├── web/                    # React frontend
+├── docs/                   # Documentation
+├── migrations/             # Database migrations
+├── docker/                 # Docker support files
+├── .github/workflows/      # CI/CD pipelines
+├── Dockerfile              # Backend container
+├── docker-compose.yml      # Full stack deployment
+└── Makefile                # Build automation
+```
+
+### Make Commands
+
+```bash
+# Build
+make build              # Build Go binary
+make build-all          # Build for all platforms
+make frontend-build     # Build React frontend
+
+# Test
+make test               # Run tests
+make test-coverage      # Run with coverage report
+make bench              # Run benchmarks
+
+# Lint
+make lint               # Run Go linters
+make fmt                # Format code
+
+# Docker
+make docker-build       # Build backend image
+make docker-build-web   # Build frontend image
+make docker-build-all   # Build all images
+make docker-compose-up  # Start all services
+make docker-compose-down # Stop all services
+
+# Development
+make dev                # Run in development mode
+make frontend-dev       # Run frontend dev server
+```
+
+---
 
 ## Contributing
 
-Contributions are welcome! Please follow these guidelines:
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+### Quick Contribution Steps
 
 1. Fork the repository
-2. Create a feature branch
-3. Write tests for new features
-4. Ensure code follows Go best practices
-5. Submit a pull request
-
-## License
-
-MIT License - see LICENSE file for details
-
-## Support
-
-For issues and questions:
-- GitHub Issues: https://github.com/volcanion-company/volcanion-stress-test-tool/issues
-- Documentation: This README
-
-## Roadmap
-
-- [ ] WebSocket support for real-time dashboards
-- [ ] Database persistence (PostgreSQL, MongoDB)
-- [ ] Authentication and authorization
-- [ ] Test result comparison
-- [ ] Chain API testing (login → token → authenticated request)
-- [ ] Advanced rate limiting (per-second precision)
-- [ ] JSON/HTML report export
-- [ ] Distributed worker mode
-- [ ] Web UI dashboard
-- [ ] Request recording and replay
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ---
 
-Built with ❤️ using Go
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Acknowledgments
+
+- [Gin](https://github.com/gin-gonic/gin) - HTTP web framework
+- [TanStack Query](https://tanstack.com/query) - Data fetching for React
+- [Prometheus](https://prometheus.io/) - Monitoring and alerting
+- [OpenTelemetry](https://opentelemetry.io/) - Observability framework
+- [Zap](https://github.com/uber-go/zap) - Structured logging
+
+---
+
+<p align="center">
+  Made with ❤️ by <a href="https://github.com/volcanion-company">Volcanion Company</a>
+</p>

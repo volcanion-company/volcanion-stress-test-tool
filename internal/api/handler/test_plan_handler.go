@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/volcanion-company/volcanion-stress-test-tool/internal/domain"
 	"github.com/volcanion-company/volcanion-stress-test-tool/internal/domain/model"
 	"github.com/volcanion-company/volcanion-stress-test-tool/internal/domain/service"
 	"github.com/volcanion-company/volcanion-stress-test-tool/internal/logger"
@@ -12,13 +13,15 @@ import (
 
 // TestPlanHandler handles test plan related endpoints
 type TestPlanHandler struct {
-	service *service.TestService
+	service   *service.TestService
+	validator *domain.Validator
 }
 
 // NewTestPlanHandler creates a new test plan handler
 func NewTestPlanHandler(service *service.TestService) *TestPlanHandler {
 	return &TestPlanHandler{
-		service: service,
+		service:   service,
+		validator: domain.NewValidator(),
 	}
 }
 
@@ -31,10 +34,17 @@ func (h *TestPlanHandler) CreateTestPlan(c *gin.Context) {
 		return
 	}
 
+	// Validate input
+	if err := h.validator.ValidateTestPlan(&req); err != nil {
+		logger.Log.Warn("Validation failed", zap.Error(err))
+		MapErrorToHTTP(c, err)
+		return
+	}
+
 	plan, err := h.service.CreateTestPlan(&req)
 	if err != nil {
 		logger.Log.Error("Failed to create test plan", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		MapErrorToHTTP(c, err)
 		return
 	}
 

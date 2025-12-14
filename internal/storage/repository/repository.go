@@ -1,14 +1,13 @@
 package repository
 
 import (
-	"errors"
-
+	"github.com/volcanion-company/volcanion-stress-test-tool/internal/domain"
 	"github.com/volcanion-company/volcanion-stress-test-tool/internal/domain/model"
 )
 
 var (
-	ErrTestPlanNotFound = errors.New("test plan not found")
-	ErrTestRunNotFound  = errors.New("test run not found")
+	ErrTestPlanNotFound = domain.NewNotFoundError("test plan", "")
+	ErrTestRunNotFound  = domain.NewNotFoundError("test run", "")
 )
 
 // TestPlanRepository defines interface for test plan storage
@@ -33,4 +32,20 @@ type MetricsRepository interface {
 	Save(metrics *model.Metrics) error
 	GetByRunID(runID string) (*model.Metrics, error)
 	Delete(runID string) error
+}
+
+// ScenarioRepository defines interface for scenario storage
+type ScenarioRepository interface {
+	Create(scenario *model.Scenario) error
+	GetByID(id string) (*model.Scenario, error)
+	GetAll() ([]*model.Scenario, error)
+	Delete(id string) error
+}
+
+// ScenarioExecutionRepository defines interface for scenario execution storage
+type ScenarioExecutionRepository interface {
+	Create(execution *model.ScenarioExecution) error
+	GetByID(id string) (*model.ScenarioExecution, error)
+	GetByScenarioID(scenarioID string) ([]*model.ScenarioExecution, error)
+	Update(execution *model.ScenarioExecution) error
 }

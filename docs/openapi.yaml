@@ -1,0 +1,1177 @@
+openapi: 3.0.3
+info:
+  title: Volcanion Stress Test Tool API
+  description: |
+    A powerful HTTP load testing and stress testing tool built in Go.
+    
+    ## Authentication
+    
+    The API supports two authentication methods:
+    
+    1. **JWT Bearer Token**: Obtain a token via `/api/v1/auth/login` and include it in the `Authorization` header.
+    2. **API Key**: Include your API key in the `X-API-Key` header.
+    
+    ## Rate Limiting
+    
+    API endpoints are rate-limited to 100 requests per minute per IP address.
+    When rate limited, you'll receive a `429 Too Many Requests` response.
+    
+    ## Versioning
+    
+    All API endpoints are versioned under `/api/v1/`. The current version is returned 
+    in the `X-API-Version` response header.
+    
+  version: 1.0.0
+  contact:
+    name: Volcanion Team
+    url: https://github.com/volcanion-company/volcanion-stress-test-tool
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.volcanion.io
+    description: Production server (example)
+
+tags:
+  - name: Authentication
+    description: User authentication and API key management
+  - name: Test Plans
+    description: Create and manage test plans
+  - name: Test Runs
+    description: Execute and monitor test runs
+  - name: Scenarios
+    description: Multi-step test scenarios
+  - name: Reports
+    description: Generate and export reports
+  - name: Audit
+    description: Audit logging (admin only)
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns the health status of the service
+      operationId: healthCheck
+      tags: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: volcanion-stress-test-tool
+
+  /api/v1/auth/login:
+    post:
+      summary: Login
+      description: Authenticate with username and password to receive a JWT token
+      operationId: login
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Successfully authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/auth/api-keys:
+    post:
+      summary: Create API Key
+      description: Create a new API key for programmatic access
+      operationId: createApiKey
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAPIKeyRequest'
+      responses:
+        '201':
+          description: API key created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateAPIKeyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      summary: List API Keys
+      description: List all API keys for the authenticated user
+      operationId: listApiKeys
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      responses:
+        '200':
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/APIKey'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/auth/api-keys/{id}:
+    delete:
+      summary: Revoke API Key
+      description: Revoke an existing API key
+      operationId: revokeApiKey
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: API key revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/test-plans:
+    post:
+      summary: Create Test Plan
+      description: Create a new test plan configuration
+      operationId: createTestPlan
+      tags:
+        - Test Plans
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTestPlanRequest'
+      responses:
+        '201':
+          description: Test plan created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestPlan'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      summary: List Test Plans
+      description: Get all test plans
+      operationId: listTestPlans
+      tags:
+        - Test Plans
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of test plans
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TestPlan'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/test-plans/{id}:
+    get:
+      summary: Get Test Plan
+      description: Get a specific test plan by ID
+      operationId: getTestPlan
+      tags:
+        - Test Plans
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test plan details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestPlan'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/test-runs/start:
+    post:
+      summary: Start Test Run
+      description: Start a new test run from a test plan
+      operationId: startTestRun
+      tags:
+        - Test Runs
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - plan_id
+              properties:
+                plan_id:
+                  type: string
+                  description: ID of the test plan to execute
+      responses:
+        '201':
+          description: Test run started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestRun'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/test-runs/{id}/stop:
+    post:
+      summary: Stop Test Run
+      description: Stop a running test
+      operationId: stopTestRun
+      tags:
+        - Test Runs
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test run stopped
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestRun'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/test-runs:
+    get:
+      summary: List Test Runs
+      description: Get all test runs
+      operationId: listTestRuns
+      tags:
+        - Test Runs
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [running, completed, cancelled, failed]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of test runs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TestRun'
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/test-runs/{id}:
+    get:
+      summary: Get Test Run
+      description: Get a specific test run by ID
+      operationId: getTestRun
+      tags:
+        - Test Runs
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test run details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestRun'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/test-runs/{id}/metrics:
+    get:
+      summary: Get Test Metrics
+      description: Get aggregated metrics for a test run
+      operationId: getTestMetrics
+      tags:
+        - Test Runs
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Metrics'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/test-runs/{id}/ws/metrics:
+    get:
+      summary: Live Metrics WebSocket
+      description: |
+        WebSocket endpoint for real-time metrics updates.
+        Connect using the WebSocket protocol.
+      operationId: liveMetricsWS
+      tags:
+        - Test Runs
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '101':
+          description: WebSocket connection established
+
+  /api/v1/scenarios:
+    post:
+      summary: Create Scenario
+      description: Create a multi-step test scenario
+      operationId: createScenario
+      tags:
+        - Scenarios
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateScenarioRequest'
+      responses:
+        '201':
+          description: Scenario created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      summary: List Scenarios
+      description: Get all scenarios
+      operationId: listScenarios
+      tags:
+        - Scenarios
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      responses:
+        '200':
+          description: List of scenarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Scenario'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/scenarios/{id}:
+    get:
+      summary: Get Scenario
+      description: Get a specific scenario by ID
+      operationId: getScenario
+      tags:
+        - Scenarios
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Scenario details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete Scenario
+      description: Delete a scenario
+      operationId: deleteScenario
+      tags:
+        - Scenarios
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Scenario deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/scenarios/execute:
+    post:
+      summary: Execute Scenario
+      description: Execute a scenario test
+      operationId: executeScenario
+      tags:
+        - Scenarios
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - scenario_id
+              properties:
+                scenario_id:
+                  type: string
+                variables:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        '201':
+          description: Scenario execution started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioExecution'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/reports/test-runs/{id}/export:
+    get:
+      summary: Export Test Run Report
+      description: Export test run results in various formats
+      operationId: exportTestRunReport
+      tags:
+        - Reports
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, csv, html, pdf]
+            default: json
+      responses:
+        '200':
+          description: Report data
+          content:
+            application/json:
+              schema:
+                type: object
+            text/csv:
+              schema:
+                type: string
+            text/html:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/reports/compare:
+    post:
+      summary: Compare Test Runs
+      description: Compare metrics between multiple test runs
+      operationId: compareTestRuns
+      tags:
+        - Reports
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - run_ids
+              properties:
+                run_ids:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 2
+      responses:
+        '200':
+          description: Comparison results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComparisonReport'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/reports/test-runs/{id}/sla:
+    post:
+      summary: Check SLA
+      description: Check if test results meet SLA requirements
+      operationId: checkSLA
+      tags:
+        - Reports
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SLAConfig'
+      responses:
+        '200':
+          description: SLA check results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SLAResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/audit/logs:
+    get:
+      summary: Get Audit Logs
+      description: Get audit logs (admin only)
+      operationId: getAuditLogs
+      tags:
+        - Audit
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: start_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Audit logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLog'
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /api/v1/auth/login
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for programmatic access
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized - authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+        details:
+          type: object
+          description: Additional error details
+
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          example: admin
+        password:
+          type: string
+          format: password
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT access token
+        expires_at:
+          type: integer
+          format: int64
+          description: Token expiration timestamp (Unix)
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+          enum: [admin, user, readonly]
+
+    CreateAPIKeyRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Descriptive name for the API key
+        role:
+          type: string
+          enum: [admin, user, readonly]
+          default: user
+        expires_at:
+          type: string
+          format: date-time
+          description: Optional expiration date
+
+    CreateAPIKeyResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        key:
+          type: string
+          description: The API key (only shown once)
+        name:
+          type: string
+        role:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    APIKey:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        last_used_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    CreateTestPlanRequest:
+      type: object
+      required:
+        - name
+        - target_url
+        - method
+        - users
+        - duration_sec
+      properties:
+        name:
+          type: string
+          description: Test plan name
+          example: API Load Test
+        target_url:
+          type: string
+          format: uri
+          description: Target URL to test
+          example: https://api.example.com/endpoint
+        method:
+          type: string
+          enum: [GET, POST, PUT, PATCH, DELETE]
+          description: HTTP method
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom HTTP headers
+        body:
+          type: string
+          description: Request body (for POST/PUT/PATCH)
+        users:
+          type: integer
+          minimum: 1
+          description: Number of concurrent virtual users
+          example: 100
+        ramp_up_sec:
+          type: integer
+          minimum: 0
+          description: Ramp-up period in seconds
+          default: 0
+        duration_sec:
+          type: integer
+          minimum: 1
+          description: Test duration in seconds
+          example: 60
+        timeout_ms:
+          type: integer
+          minimum: 0
+          description: Request timeout in milliseconds
+          default: 30000
+        target_rps:
+          type: integer
+          minimum: 0
+          description: Target requests per second (0 = unlimited)
+          default: 0
+        rate_pattern:
+          type: string
+          enum: [fixed, step, spike, ramp]
+          default: fixed
+        sla:
+          $ref: '#/components/schemas/SLAConfig'
+
+    TestPlan:
+      allOf:
+        - $ref: '#/components/schemas/CreateTestPlanRequest'
+        - type: object
+          properties:
+            id:
+              type: string
+            created_at:
+              type: string
+              format: date-time
+
+    TestRun:
+      type: object
+      properties:
+        id:
+          type: string
+        plan_id:
+          type: string
+        status:
+          type: string
+          enum: [running, completed, cancelled, failed]
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        metrics:
+          $ref: '#/components/schemas/Metrics'
+
+    Metrics:
+      type: object
+      properties:
+        run_id:
+          type: string
+        total_requests:
+          type: integer
+        successful_requests:
+          type: integer
+        failed_requests:
+          type: integer
+        avg_latency_ms:
+          type: number
+          format: double
+        min_latency_ms:
+          type: number
+          format: double
+        max_latency_ms:
+          type: number
+          format: double
+        p50_latency_ms:
+          type: number
+          format: double
+        p90_latency_ms:
+          type: number
+          format: double
+        p95_latency_ms:
+          type: number
+          format: double
+        p99_latency_ms:
+          type: number
+          format: double
+        requests_per_second:
+          type: number
+          format: double
+        error_rate:
+          type: number
+          format: double
+        status_codes:
+          type: object
+          additionalProperties:
+            type: integer
+
+    CreateScenarioRequest:
+      type: object
+      required:
+        - name
+        - steps
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScenarioStep'
+        variables:
+          type: object
+          additionalProperties: true
+
+    ScenarioStep:
+      type: object
+      required:
+        - name
+        - url
+        - method
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+        method:
+          type: string
+          enum: [GET, POST, PUT, PATCH, DELETE]
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        body:
+          type: string
+        extract:
+          type: object
+          additionalProperties:
+            type: string
+          description: Variables to extract from response
+        assertions:
+          type: array
+          items:
+            type: object
+
+    Scenario:
+      allOf:
+        - $ref: '#/components/schemas/CreateScenarioRequest'
+        - type: object
+          properties:
+            id:
+              type: string
+            created_at:
+              type: string
+              format: date-time
+
+    ScenarioExecution:
+      type: object
+      properties:
+        id:
+          type: string
+        scenario_id:
+          type: string
+        status:
+          type: string
+          enum: [running, completed, failed]
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        step_results:
+          type: array
+          items:
+            type: object
+
+    SLAConfig:
+      type: object
+      properties:
+        max_p95_latency:
+          type: number
+          description: Maximum P95 latency in milliseconds
+        max_error_rate:
+          type: number
+          description: Maximum error rate (0.0 - 1.0)
+        min_rps:
+          type: number
+          description: Minimum requests per second
+
+    SLAResult:
+      type: object
+      properties:
+        passed:
+          type: boolean
+        violations:
+          type: array
+          items:
+            type: object
+            properties:
+              metric:
+                type: string
+              threshold:
+                type: number
+              actual:
+                type: number
+
+    ComparisonReport:
+      type: object
+      properties:
+        runs:
+          type: array
+          items:
+            $ref: '#/components/schemas/TestRun'
+        comparison:
+          type: object
+          properties:
+            latency_diff:
+              type: object
+            throughput_diff:
+              type: object
+            error_rate_diff:
+              type: object
+
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        user_id:
+          type: string
+        action:
+          type: string
+        resource:
+          type: string
+        resource_id:
+          type: string
+        details:
+          type: object
+        ip_address:
+          type: string

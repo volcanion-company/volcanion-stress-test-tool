@@ -3,44 +3,47 @@ package engine
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
 
 	"github.com/volcanion-company/volcanion-stress-test-tool/internal/domain/model"
 	"github.com/volcanion-company/volcanion-stress-test-tool/internal/logger"
+	"github.com/volcanion-company/volcanion-stress-test-tool/internal/metrics"
 	"go.uber.org/zap"
 )
 
 // Worker represents a single worker that executes HTTP requests
 type Worker struct {
-	ID        int
-	plan      *model.TestPlan
-	client    *http.Client
-	metrics   *model.Metrics
-	latencies []float64
+	ID             int
+	plan           *model.TestPlan
+	client         *http.Client
+	metrics        *model.Metrics
+	latencyBuffer  *RingBuffer
+	collector      *metrics.Collector
+	templateEngine *TemplateEngine
 }
 
 // NewWorker creates a new worker instance
-func NewWorker(id int, plan *model.TestPlan, metrics *model.Metrics) *Worker {
-	// Create custom HTTP client with timeout and keep-alive
+func NewWorker(id int, plan *model.TestPlan, metrics *model.Metrics, sharedClient *http.Client, collector *metrics.Collector) *Worker {
+	// Use the shared client but create a wrapper with timeout for this plan
 	client := &http.Client{
-		Timeout: time.Duration(plan.TimeoutMs) * time.Millisecond,
-		Transport: &http.Transport{
-			MaxIdleConns:        100,
-			MaxIdleConnsPerHost: 100,
-			IdleConnTimeout:     90 * time.Second,
-			DisableCompression:  false,
-			DisableKeepAlives:   false,
-		},
+		Transport: sharedClient.Transport,
+		Timeout:   time.Duration(plan.TimeoutMs) * time.Millisecond,
 	}
 
+	// Create ring buffer: store last 10,000 latencies per worker
+	latencyBuffer := NewRingBuffer(10000)
+
 	return &Worker{
-		ID:        id,
-		plan:      plan,
-		client:    client,
-		metrics:   metrics,
-		latencies: make([]float64, 0, 1000),
+		ID:             id,
+		plan:           plan,
+		client:         client,
+		metrics:        metrics,
+		latencyBuffer:  latencyBuffer,
+		collector:      collector,
+		templateEngine: NewTemplateEngine(),
 	}
 }
 
@@ -69,8 +72,12 @@ func (w *Worker) Run(ctx context.Context, requestChan <-chan struct{}) {
 func (w *Worker) executeRequest(ctx context.Context) {
 	startTime := time.Now()
 
+	// Apply template substitution to body and headers
+	processedBody := w.templateEngine.Process(w.plan.Body)
+	processedHeaders := w.templateEngine.ProcessMap(w.plan.Headers)
+
 	// Create HTTP request
-	req, err := http.NewRequestWithContext(ctx, w.plan.Method, w.plan.TargetURL, bytes.NewBufferString(w.plan.Body))
+	req, err := http.NewRequestWithContext(ctx, w.plan.Method, w.plan.TargetURL, bytes.NewBufferString(processedBody))
 	if err != nil {
 		latency := float64(time.Since(startTime).Milliseconds())
 		w.metrics.RecordRequest(false, latency, 0, err)
@@ -80,8 +87,8 @@ func (w *Worker) executeRequest(ctx context.Context) {
 		return
 	}
 
-	// Add headers
-	for key, value := range w.plan.Headers {
+	// Add headers with template substitution
+	for key, value := range processedHeaders {
 		req.Header.Set(key, value)
 	}
 
@@ -105,11 +112,15 @@ func (w *Worker) executeRequest(ctx context.Context) {
 	success := resp.StatusCode >= 200 && resp.StatusCode < 400
 	w.metrics.RecordRequest(success, latency, resp.StatusCode, nil)
 
-	// Store latency for percentile calculation
-	w.latencies = append(w.latencies, latency)
+	// Store latency in ring buffer for percentile calculation
+	w.latencyBuffer.Add(latency)
+
+	// Record to Prometheus
+	status := fmt.Sprintf("%d", resp.StatusCode)
+	w.collector.RecordRequest(w.metrics.RunID, w.plan.Method, status, latency/1000.0, !success)
 }
 
-// GetLatencies returns all recorded latencies
+// GetLatencies returns all recorded latencies from the ring buffer
 func (w *Worker) GetLatencies() []float64 {
-	return w.latencies
+	return w.latencyBuffer.GetAll()
 }

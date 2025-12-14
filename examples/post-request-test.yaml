@@ -1,0 +1,43 @@
+# Example Test Plan - POST Request with Body
+
+name: "API Create User Test"
+target_url: "https://api.example.com/users"
+method: "POST"
+
+# Load configuration
+concurrent_users: 20
+duration_sec: 120
+ramp_up_sec: 20
+
+# HTTP settings
+timeout_ms: 10000
+headers:
+  Content-Type: "application/json"
+  Authorization: "Bearer your-token-here"
+
+# Request body (JSON string)
+body: |
+  {
+    "name": "Test User",
+    "email": "test@example.com",
+    "role": "user"
+  }
+
+# Rate pattern with steps
+rate_pattern: "step"
+rate_steps:
+  - duration_sec: 30
+    target_rps: 10
+  - duration_sec: 30
+    target_rps: 50
+  - duration_sec: 30
+    target_rps: 100
+  - duration_sec: 30
+    target_rps: 50
+
+# SLA configuration
+sla_config:
+  max_avg_latency_ms: 500
+  max_p95_latency_ms: 1000
+  max_p99_latency_ms: 2000
+  min_success_rate: 95.0

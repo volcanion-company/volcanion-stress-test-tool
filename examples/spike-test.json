@@ -1,0 +1,42 @@
+{
+  "name": "Spike Test - High Load Burst",
+  "target_url": "https://api.example.com/products",
+  "method": "GET",
+  "concurrent_users": 100,
+  "duration_sec": 300,
+  "ramp_up_sec": 0,
+  "timeout_ms": 3000,
+  "headers": {
+    "Accept": "application/json",
+    "User-Agent": "Volcanion-LoadTest/1.0"
+  },
+  "rate_pattern": "spike",
+  "rate_steps": [
+    {
+      "duration_sec": 60,
+      "target_rps": 50
+    },
+    {
+      "duration_sec": 60,
+      "target_rps": 500
+    },
+    {
+      "duration_sec": 60,
+      "target_rps": 50
+    },
+    {
+      "duration_sec": 60,
+      "target_rps": 1000
+    },
+    {
+      "duration_sec": 60,
+      "target_rps": 50
+    }
+  ],
+  "sla_config": {
+    "max_avg_latency_ms": 1000,
+    "max_p95_latency_ms": 2000,
+    "max_p99_latency_ms": 5000,
+    "min_success_rate": 90.0
+  }
+}

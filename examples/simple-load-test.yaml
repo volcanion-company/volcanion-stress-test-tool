@@ -1,0 +1,27 @@
+# Example Test Plan - Simple Load Test
+
+name: "Simple API Load Test"
+target_url: "https://api.example.com/users"
+method: "GET"
+
+# Load configuration
+concurrent_users: 10
+duration_sec: 60
+ramp_up_sec: 10
+
+# HTTP settings
+timeout_ms: 5000
+headers:
+  Content-Type: "application/json"
+  Authorization: "Bearer your-token-here"
+
+# Rate pattern: fixed, ramp, step, spike
+rate_pattern: "fixed"
+target_rps: 100
+
+# SLA configuration (optional)
+sla_config:
+  max_avg_latency_ms: 200
+  max_p95_latency_ms: 500
+  max_p99_latency_ms: 1000
+  min_success_rate: 99.0
