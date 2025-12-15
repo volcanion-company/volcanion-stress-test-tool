@@ -9,7 +9,7 @@ on:
     types: [published]
 
 env:
-  GO_VERSION: '1.22'
+  GO_VERSION: '1.25'
   NODE_VERSION: '20'
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -78,7 +78,24 @@ jobs:
           cache-dependency-path: './web/package-lock.json'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          # Kiểm tra và cài đặt plugin nếu thiếu
+          if ! npm list eslint-plugin-react 2>/dev/null | grep -q eslint-plugin-react; then
+            npm install --save-dev eslint-plugin-react
+          fi
+          
+          if ! npm list @typescript-eslint/eslint-plugin 2>/dev/null | grep -q @typescript-eslint; then
+            npm install --save-dev @typescript-eslint/eslint-plugin @typescript-eslint/parser
+          fi
+          
+          # Kiểm tra các plugin thông dụng khác
+          if [ -f .eslintrc.json ] && grep -q 'react-hooks' .eslintrc.json; then
+            npm install --save-dev eslint-plugin-react-hooks
+          fi
+          
+          if [ -f .eslintrc.json ] && grep -q 'jsx-a11y' .eslintrc.json; then
+            npm install --save-dev eslint-plugin-jsx-a11y
+          fi
 
       - name: Run linting
         run: npm run lint --if-present

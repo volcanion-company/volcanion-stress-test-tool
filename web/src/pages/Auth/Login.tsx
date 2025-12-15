@@ -1,8 +1,10 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import { Lock, Mail } from 'lucide-react';
+import { authApi as loginApi } from '../../services/api';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -15,31 +17,13 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-
     try {
-      // TODO: Replace with actual API call
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Invalid credentials');
-      }
-
-      const data = await response.json();
-      
-      // Store token in localStorage
+      const { data } = await loginApi.login(email, password);
       localStorage.setItem('auth_token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
-
-      // Redirect to dashboard
       navigate('/');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+    } catch (err: any) {
+      setError(err?.response?.data?.error || err.message || 'Login failed');
     } finally {
       setIsLoading(false);
     }
@@ -57,7 +41,7 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
+                Username or Email Address
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -116,7 +100,7 @@ export default function Login() {
         </Card>
 
         <p className="mt-4 text-center text-sm text-gray-600">
-          Demo credentials: admin@example.com / admin123
+          Demo credentials: volcanion / volcanion-admin
         </p>
       </div>
     </div>

@@ -50,9 +50,9 @@ CREATE INDEX idx_token_blacklist_expires_at ON token_blacklist(expires_at);
 INSERT INTO users (id, username, email, password_hash, role, is_active, created_at, updated_at)
 VALUES (
     'user-admin-001',
-    'admin',
+    'volcanion',
     'admin@volcanion.com',
-    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', -- admin123
+    '$2a$12$VhZD0Qh00IC4Nrfn.PJnWuBNxNVgYMmNiQxEKP53sE1uHy6n8.2AW', -- volcanion-admin
     'admin',
     true,
     NOW(),
