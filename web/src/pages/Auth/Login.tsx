@@ -65,7 +65,6 @@ export default function Login() {
                 </div>
                 <input
                   id="email"
-                  type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

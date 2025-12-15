@@ -1,0 +1,409 @@
+definitions:
+  handler.CheckSLARequest:
+    properties:
+      max_avg_response_time:
+        minimum: 0
+        type: number
+      max_p95:
+        minimum: 0
+        type: number
+      max_p99:
+        minimum: 0
+        type: number
+      min_requests_per_second:
+        minimum: 0
+        type: number
+      min_success_rate:
+        maximum: 100
+        minimum: 0
+        type: number
+    required:
+    - max_avg_response_time
+    - max_p95
+    - max_p99
+    - min_requests_per_second
+    - min_success_rate
+    type: object
+  handler.CompareTestRunsRequest:
+    properties:
+      baseline_run_id:
+        type: string
+      comparison_run_id:
+        type: string
+    required:
+    - baseline_run_id
+    - comparison_run_id
+    type: object
+  handler.CreateShareableReportRequest:
+    properties:
+      format:
+        enum:
+        - json
+        - csv
+        - html
+        type: string
+      test_run_id:
+        type: string
+      title:
+        type: string
+      ttl_hours:
+        description: 1 hour to 7 days
+        maximum: 168
+        minimum: 1
+        type: integer
+    required:
+    - format
+    - test_run_id
+    - ttl_hours
+    type: object
+  model.Metrics:
+    properties:
+      active_workers:
+        type: integer
+      avg_latency_ms:
+        type: number
+      current_rps:
+        type: number
+      errors:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      failed_requests:
+        type: integer
+      last_updated:
+        type: string
+      max_latency_ms:
+        type: number
+      min_latency_ms:
+        type: number
+      p50_latency_ms:
+        type: number
+      p75_latency_ms:
+        type: number
+      p95_latency_ms:
+        type: number
+      p99_latency_ms:
+        type: number
+      requests_per_sec:
+        type: number
+      run_id:
+        type: string
+      status_codes:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      success_requests:
+        type: integer
+      total_duration_ms:
+        type: integer
+      total_requests:
+        type: integer
+    type: object
+  model.StopReason:
+    enum:
+    - completed
+    - cancelled
+    - failed
+    type: string
+    x-enum-comments:
+      ReasonCancelled: User cancelled
+      ReasonCompleted: Normal completion
+      ReasonFailed: Error or SLA violation
+    x-enum-descriptions:
+    - Normal completion
+    - User cancelled
+    - Error or SLA violation
+    x-enum-varnames:
+    - ReasonCompleted
+    - ReasonCancelled
+    - ReasonFailed
+  model.TestRun:
+    properties:
+      created_at:
+        type: string
+      end_at:
+        type: string
+      id:
+        type: string
+      plan_id:
+        type: string
+      start_at:
+        type: string
+      status:
+        $ref: '#/definitions/model.TestRunStatus'
+      stop_reason:
+        allOf:
+        - $ref: '#/definitions/model.StopReason'
+        description: How the run ended
+    type: object
+  model.TestRunStatus:
+    enum:
+    - running
+    - completed
+    - cancelled
+    - failed
+    type: string
+    x-enum-varnames:
+    - StatusRunning
+    - StatusCompleted
+    - StatusCancelled
+    - StatusFailed
+  reporting.ComparisonResult:
+    properties:
+      baseline_metrics:
+        $ref: '#/definitions/model.Metrics'
+      baseline_run:
+        $ref: '#/definitions/model.TestRun'
+      compare_metrics:
+        $ref: '#/definitions/model.Metrics'
+      compared_at:
+        type: string
+      comparison_run:
+        $ref: '#/definitions/model.TestRun'
+      differences:
+        $ref: '#/definitions/reporting.MetricDifferences'
+      summary:
+        type: string
+    type: object
+  reporting.DiffValue:
+    properties:
+      absolute_diff:
+        type: number
+      baseline:
+        type: number
+      comparison:
+        type: number
+      degraded:
+        type: boolean
+      improved:
+        type: boolean
+      percentage_diff:
+        type: number
+    type: object
+  reporting.ExportFormat:
+    enum:
+    - json
+    - csv
+    - html
+    type: string
+    x-enum-varnames:
+    - FormatJSON
+    - FormatCSV
+    - FormatHTML
+  reporting.MetricDifferences:
+    properties:
+      avg_response_time:
+        $ref: '#/definitions/reporting.DiffValue'
+      failed_requests:
+        $ref: '#/definitions/reporting.DiffValue'
+      max_response_time:
+        $ref: '#/definitions/reporting.DiffValue'
+      min_response_time:
+        $ref: '#/definitions/reporting.DiffValue'
+      p50:
+        $ref: '#/definitions/reporting.DiffValue'
+      p75:
+        $ref: '#/definitions/reporting.DiffValue'
+      p95:
+        $ref: '#/definitions/reporting.DiffValue'
+      p99:
+        $ref: '#/definitions/reporting.DiffValue'
+      requests_per_second:
+        $ref: '#/definitions/reporting.DiffValue'
+      success_rate:
+        $ref: '#/definitions/reporting.DiffValue'
+      successful_requests:
+        $ref: '#/definitions/reporting.DiffValue'
+      total_requests:
+        $ref: '#/definitions/reporting.DiffValue'
+    type: object
+  reporting.SLAResult:
+    properties:
+      checked_at:
+        type: string
+      met:
+        type: boolean
+      violations:
+        items:
+          type: string
+        type: array
+    type: object
+  reporting.StoredReport:
+    properties:
+      access_count:
+        type: integer
+      content_type:
+        type: string
+      created_at:
+        type: string
+      expires_at:
+        type: string
+      format:
+        $ref: '#/definitions/reporting.ExportFormat'
+      id:
+        type: string
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      title:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /api/v1/reports/compare:
+    post:
+      consumes:
+      - application/json
+      description: Compare metrics between two test runs
+      parameters:
+      - description: Comparison request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.CompareTestRunsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/reporting.ComparisonResult'
+      summary: Compare test runs
+      tags:
+      - reports
+  /api/v1/reports/share:
+    post:
+      consumes:
+      - application/json
+      description: Generate a shareable report with a unique URL
+      parameters:
+      - description: Report request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.CreateShareableReportRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: object
+      summary: Create shareable report
+      tags:
+      - reports
+  /api/v1/reports/shared:
+    get:
+      description: List all active (non-expired) shared reports
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/reporting.StoredReport'
+            type: array
+      summary: List shared reports
+      tags:
+      - reports
+  /api/v1/reports/shared/{id}:
+    delete:
+      description: Delete a shared report by ID
+      parameters:
+      - description: Report ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      summary: Delete shared report
+      tags:
+      - reports
+    get:
+      description: Retrieve a shared report by ID
+      parameters:
+      - description: Report ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+      summary: Get shared report
+      tags:
+      - reports
+  /api/v1/reports/stats:
+    get:
+      description: Get statistics about stored reports
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+      summary: Get report statistics
+      tags:
+      - reports
+  /api/v1/reports/test-runs/{id}/export:
+    get:
+      description: Export test run results in JSON, CSV, or HTML format
+      parameters:
+      - description: Test Run ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Export format (json, csv, html)
+        in: query
+        name: format
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+      summary: Export test run
+      tags:
+      - reports
+  /api/v1/reports/test-runs/{id}/sla:
+    post:
+      consumes:
+      - application/json
+      description: Check if test run meets specified SLA criteria
+      parameters:
+      - description: Test Run ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: SLA criteria
+        in: body
+        name: criteria
+        required: true
+        schema:
+          $ref: '#/definitions/handler.CheckSLARequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/reporting.SLAResult'
+      summary: Check SLA
+      tags:
+      - reports
+swagger: "2.0"
