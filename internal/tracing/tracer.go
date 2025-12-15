@@ -98,11 +98,12 @@ func InitTracer(config TracerConfig) (*TracerProvider, error) {
 
 	// Create sampler
 	var sampler sdktrace.Sampler
-	if config.SampleRate >= 1.0 {
+	switch {
+	case config.SampleRate >= 1.0:
 		sampler = sdktrace.AlwaysSample()
-	} else if config.SampleRate <= 0 {
+	case config.SampleRate <= 0:
 		sampler = sdktrace.NeverSample()
-	} else {
+	default:
 		sampler = sdktrace.TraceIDRatioBased(config.SampleRate)
 	}
 

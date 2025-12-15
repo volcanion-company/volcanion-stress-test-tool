@@ -45,7 +45,7 @@ func NewWebSocketHandler(testService *service.TestService, logger *zap.Logger, c
 // WARNING: Do not use in production!
 func NewWebSocketHandlerPermissive(testService *service.TestService, logger *zap.Logger) *WebSocketHandler {
 	upgrader := websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
+		CheckOrigin: func(_ *http.Request) bool {
 			return true // Allow all origins - DEVELOPMENT ONLY
 		},
 		ReadBufferSize:  1024,
@@ -129,7 +129,9 @@ func (h *WebSocketHandler) LiveTestMetrics(c *gin.Context) {
 					"status":  "completed",
 					"metrics": metrics,
 				}
-				conn.WriteJSON(finalMsg)
+				if err := conn.WriteJSON(finalMsg); err != nil {
+					h.logger.Error("Failed to send final message", zap.Error(err))
+				}
 				return
 			}
 		}

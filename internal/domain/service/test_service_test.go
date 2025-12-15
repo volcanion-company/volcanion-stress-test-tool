@@ -12,7 +12,9 @@ import (
 
 func init() {
 	// Initialize logger for tests
-	logger.Init("error") // Use error level to reduce noise
+	if err := logger.Init("error"); err != nil {
+		panic(err)
+	}
 }
 
 func TestNewTestService(t *testing.T) {

@@ -14,7 +14,9 @@ import (
 )
 
 func init() {
-	logger.Init("error")
+	if err := logger.Init("error"); err != nil {
+		panic(err)
+	}
 }
 func TestNewWorker(t *testing.T) {
 	plan := &model.TestPlan{
@@ -53,7 +55,7 @@ func TestWorkerExecuteRequest(t *testing.T) {
 		receivedPath = r.URL.Path
 		mu.Unlock()
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status": "ok"}`))
+		_, _ = w.Write([]byte(`{"status": "ok"}`))
 	}))
 	defer server.Close()
 
@@ -123,7 +125,7 @@ func TestWorkerPOSTWithBody(t *testing.T) {
 		mu.Lock()
 		receivedContentType = r.Header.Get("Content-Type")
 		body := make([]byte, r.ContentLength)
-		r.Body.Read(body)
+		_, _ = r.Body.Read(body)
 		receivedBody = string(body)
 		mu.Unlock()
 		w.WriteHeader(http.StatusCreated)
@@ -184,6 +186,7 @@ func TestWorkerCustomHeaders(t *testing.T) {
 		receivedHeaders = r.Header.Clone()
 		mu.Unlock()
 		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte{})
 	}))
 	defer server.Close()
 
@@ -237,7 +240,7 @@ func TestWorkerCustomHeaders(t *testing.T) {
 }
 
 func TestWorkerTimeout(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		// Delay longer than timeout
 		time.Sleep(2 * time.Second)
 		w.WriteHeader(http.StatusOK)
@@ -284,7 +287,7 @@ func TestWorkerTimeout(t *testing.T) {
 }
 
 func TestWorkerServerError(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer server.Close()
@@ -330,7 +333,7 @@ func TestWorkerServerError(t *testing.T) {
 
 func TestWorkerMultipleRequests(t *testing.T) {
 	var requestCount int64
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt64(&requestCount, 1)
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -376,7 +379,7 @@ func TestWorkerMultipleRequests(t *testing.T) {
 }
 
 func TestWorkerLatencyRecording(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(50 * time.Millisecond) // Known latency
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -434,7 +437,7 @@ func TestWorkerLatencyRecording(t *testing.T) {
 
 func TestWorkerContextCancellation(t *testing.T) {
 	var requestCount int64
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt64(&requestCount, 1)
 		time.Sleep(10 * time.Millisecond) // Add delay to ensure cancellation works
 		w.WriteHeader(http.StatusOK)

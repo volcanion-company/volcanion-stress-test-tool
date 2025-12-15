@@ -29,7 +29,8 @@ type TemplateEngine struct {
 // NewTemplateEngine creates a new template engine
 func NewTemplateEngine() *TemplateEngine {
 	return &TemplateEngine{
-		random: rand.New(rand.NewSource(time.Now().UnixNano())),
+		// Not security-sensitive randomness; math/rand is acceptable here.
+		random: rand.New(rand.NewSource(time.Now().UnixNano())), //nolint:gosec
 	}
 }
 
@@ -53,12 +54,12 @@ func (t *TemplateEngine) Process(input string) string {
 	result := input
 
 	// Replace {{uuid}} using pre-compiled pattern
-	result = uuidPattern.ReplaceAllStringFunc(result, func(match string) string {
+	result = uuidPattern.ReplaceAllStringFunc(result, func(_ string) string {
 		return t.generateUUID()
 	})
 
 	// Replace {{timestamp}} using pre-compiled pattern
-	result = timestampPattern.ReplaceAllStringFunc(result, func(match string) string {
+	result = timestampPattern.ReplaceAllStringFunc(result, func(_ string) string {
 		return strconv.FormatInt(time.Now().Unix(), 10)
 	})
 

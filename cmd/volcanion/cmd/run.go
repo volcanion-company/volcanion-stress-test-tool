@@ -52,10 +52,12 @@ func init() {
 	runCmd.Flags().StringVarP(&outputFile, "output", "o", "", "output file for results (JSON)")
 	runCmd.Flags().BoolVar(&noColor, "no-color", false, "disable colored output")
 
-	runCmd.MarkFlagFilename("file", "yaml", "yml", "json")
+	if err := runCmd.MarkFlagFilename("file", "yaml", "yml", "json"); err != nil {
+		panic(err)
+	}
 }
 
-func runTest(cmd *cobra.Command, args []string) error {
+func runTest(_ *cobra.Command, _ []string) error {
 	if noColor {
 		color.NoColor = true
 	}
@@ -72,16 +74,17 @@ func runTest(cmd *cobra.Command, args []string) error {
 	client := NewAPIClient(GetAPIBaseURL())
 
 	var testRunID string
-	var err error
 
 	if planFile != "" {
 		// Load plan from file and create
+		var err error
 		testRunID, err = runFromFile(client, planFile)
 		if err != nil {
 			return err
 		}
 	} else {
 		// Run existing plan
+		var err error
 		testRunID, err = runFromPlanID(client, planID)
 		if err != nil {
 			return err
@@ -137,11 +140,11 @@ func runFromFile(client *APIClient, filename string) (string, error) {
 
 	switch ext {
 	case ".yaml", ".yml":
-		if err := yaml.Unmarshal(data, &plan); err != nil {
+		if err = yaml.Unmarshal(data, &plan); err != nil {
 			return "", fmt.Errorf("failed to parse YAML: %w", err)
 		}
 	case ".json":
-		if err := json.Unmarshal(data, &plan); err != nil {
+		if err = json.Unmarshal(data, &plan); err != nil {
 			return "", fmt.Errorf("failed to parse JSON: %w", err)
 		}
 	default:
@@ -193,7 +196,8 @@ func waitForCompletion(client *APIClient, runID string) error {
 		}
 
 		status := run["status"].(string)
-		if status == "completed" || status == "failed" || status == "cancelled" {
+		//nolint:misspell // domain uses British spelling 'cancelled' for stored status values
+		if status == StatusCompleted || status == StatusFailed || status == StatusCanceled {
 			printSuccess(fmt.Sprintf("Test %s", status))
 			return nil
 		}
@@ -210,7 +214,7 @@ func saveResults(results map[string]interface{}, filename string) error {
 		return err
 	}
 
-	return os.WriteFile(filename, data, 0644)
+	return os.WriteFile(filename, data, 0o600)
 }
 
 func printTestSummary(results map[string]interface{}) {

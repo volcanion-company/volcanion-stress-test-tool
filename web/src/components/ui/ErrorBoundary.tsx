@@ -96,7 +96,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             </h2>
             
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              We're sorry, but something unexpected happened. Please try again.
+              We&apos;re sorry, but something unexpected happened. Please try again.
             </p>
 
             {import.meta.env.DEV && this.state.error && (

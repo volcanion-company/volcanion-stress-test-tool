@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 )
 
@@ -20,8 +21,8 @@ func WithTransaction(ctx context.Context, db *sql.DB, fn TxFunc) error {
 
 	defer func() {
 		if p := recover(); p != nil {
-			// Rollback on panic
-			tx.Rollback()
+			// Rollback on panic (ignore rollback error)
+			_ = tx.Rollback()
 			panic(p) // Re-throw panic after rollback
 		}
 	}()
@@ -29,7 +30,7 @@ func WithTransaction(ctx context.Context, db *sql.DB, fn TxFunc) error {
 	if err := fn(tx); err != nil {
 		// Rollback on error
 		if rbErr := tx.Rollback(); rbErr != nil {
-			return fmt.Errorf("tx failed: %w, rollback failed: %v", err, rbErr)
+			return fmt.Errorf("tx failed: %w", errors.Join(err, rbErr))
 		}
 		return err
 	}
@@ -53,7 +54,7 @@ func WithTransactionResult[T any](ctx context.Context, db *sql.DB, fn func(tx *s
 
 	defer func() {
 		if p := recover(); p != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			panic(p)
 		}
 	}()
@@ -61,7 +62,7 @@ func WithTransactionResult[T any](ctx context.Context, db *sql.DB, fn func(tx *s
 	result, err = fn(tx)
 	if err != nil {
 		if rbErr := tx.Rollback(); rbErr != nil {
-			return result, fmt.Errorf("tx failed: %w, rollback failed: %v", err, rbErr)
+			return result, fmt.Errorf("tx failed: %w", errors.Join(err, rbErr))
 		}
 		return result, err
 	}
@@ -93,14 +94,14 @@ func WithTransactionOptions(ctx context.Context, db *sql.DB, opts TxOptions, fn 
 
 	defer func() {
 		if p := recover(); p != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			panic(p)
 		}
 	}()
 
 	if err := fn(tx); err != nil {
 		if rbErr := tx.Rollback(); rbErr != nil {
-			return fmt.Errorf("tx failed: %w, rollback failed: %v", err, rbErr)
+			return fmt.Errorf("tx failed: %w", errors.Join(err, rbErr))
 		}
 		return err
 	}

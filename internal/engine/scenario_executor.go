@@ -21,6 +21,12 @@ type ScenarioExecutor struct {
 	client *http.Client
 }
 
+const (
+	statusSkipped = "skipped"
+	statusFailed  = "failed"
+	statusSuccess = "success"
+)
+
 // NewScenarioExecutor creates a new scenario executor
 func NewScenarioExecutor() *ScenarioExecutor {
 	// Create shared HTTP client with optimized transport
@@ -126,7 +132,7 @@ func (e *ScenarioExecutor) executeStep(step *model.Step, vars model.Variables) (
 	// Check skip condition
 	if step.SkipIf != nil {
 		if e.evaluateCondition(step.SkipIf, vars) {
-			result.Status = "skipped"
+			result.Status = statusSkipped
 			result.Skipped = true
 			return result, nil
 		}
@@ -148,7 +154,7 @@ func (e *ScenarioExecutor) executeStep(step *model.Step, vars model.Variables) (
 
 	req, err := http.NewRequest(step.Method, url, bodyReader)
 	if err != nil {
-		result.Status = "failed"
+		result.Status = statusFailed
 		result.Error = fmt.Sprintf("failed to create request: %v", err)
 		return result, err
 	}
@@ -174,7 +180,7 @@ func (e *ScenarioExecutor) executeStep(step *model.Step, vars model.Variables) (
 	result.ResponseTimeMs = float64(responseTime)
 
 	if err != nil {
-		result.Status = "failed"
+		result.Status = statusFailed
 		result.Error = fmt.Sprintf("request failed: %v", err)
 		return result, err
 	}
@@ -183,7 +189,7 @@ func (e *ScenarioExecutor) executeStep(step *model.Step, vars model.Variables) (
 	// Read response body
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		result.Status = "failed"
+		result.Status = statusFailed
 		result.Error = fmt.Sprintf("failed to read response: %v", err)
 		return result, err
 	}
@@ -215,9 +221,9 @@ func (e *ScenarioExecutor) executeStep(step *model.Step, vars model.Variables) (
 	}
 
 	if len(result.AssertionsFailed) > 0 {
-		result.Status = "failed"
+		result.Status = statusFailed
 	} else {
-		result.Status = "success"
+		result.Status = statusSuccess
 	}
 
 	return result, nil

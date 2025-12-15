@@ -22,9 +22,9 @@ export interface RateStep {
 }
 
 export interface SLAConfig {
-  max_p95_latency_ms?: number
-  max_p99_latency_ms?: number
-  max_avg_latency_ms?: number
+  max_p95_latency?: number
+  max_p99_latency?: number
+  max_avg_latency?: number
   min_success_rate?: number
   max_error_rate?: number
   min_rps?: number
@@ -68,12 +68,12 @@ export interface CreateTestPlanRequest {
   method: string
   headers?: Record<string, string>
   body?: string
-  concurrent_users: number
+  users: number
   ramp_up_sec?: number
   duration_sec: number
   timeout_ms?: number
   rate_pattern?: string
   target_rps?: number
   rate_steps?: RateStep[]
-  sla_config?: SLAConfig
+  sla?: SLAConfig
 }

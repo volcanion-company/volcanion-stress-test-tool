@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"testing"
 	"time"
 )
@@ -120,7 +121,7 @@ func TestAPIKeyExpired(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error for expired key")
 	}
-	if err != ErrAPIKeyExpired {
+	if !errors.Is(err, ErrAPIKeyExpired) {
 		t.Errorf("Expected ErrAPIKeyExpired, got %v", err)
 	}
 }
@@ -157,7 +158,7 @@ func TestAPIKeyRevoke(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error for revoked key")
 	}
-	if err != ErrAPIKeyInactive {
+	if !errors.Is(err, ErrAPIKeyInactive) {
 		t.Errorf("Expected ErrAPIKeyInactive, got %v", err)
 	}
 }
@@ -169,7 +170,7 @@ func TestAPIKeyRevokeNonExistent(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error for non-existent key")
 	}
-	if err != ErrAPIKeyNotFound {
+	if !errors.Is(err, ErrAPIKeyNotFound) {
 		t.Errorf("Expected ErrAPIKeyNotFound, got %v", err)
 	}
 }

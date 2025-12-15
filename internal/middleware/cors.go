@@ -11,19 +11,19 @@ import (
 func CORSMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
+		const methodOptions = "OPTIONS"
 
 		// Check if origin is allowed
-		if cfg.IsOriginAllowed(origin) {
+		switch {
+		case cfg.IsOriginAllowed(origin):
 			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
-		} else if len(cfg.AllowedOrigins) > 0 && cfg.AllowedOrigins[0] == "*" {
+		case len(cfg.AllowedOrigins) > 0 && cfg.AllowedOrigins[0] == "*":
 			// Allow all origins only if explicitly configured
 			c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		} else {
-			// Origin not allowed - don't set CORS headers
-			if c.Request.Method == "OPTIONS" {
-				c.AbortWithStatus(http.StatusForbidden)
-				return
-			}
+		case c.Request.Method == methodOptions:
+			// Origin not allowed and OPTIONS preflight -> forbid
+			c.AbortWithStatus(http.StatusForbidden)
+			return
 		}
 
 		// Only allow credentials when specific origins are set (not with *)
@@ -35,7 +35,7 @@ func CORSMiddleware(cfg *config.Config) gin.HandlerFunc {
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
 		c.Writer.Header().Set("Access-Control-Max-Age", "86400") // 24 hours
 
-		if c.Request.Method == "OPTIONS" {
+		if c.Request.Method == methodOptions {
 			c.AbortWithStatus(http.StatusNoContent)
 			return
 		}

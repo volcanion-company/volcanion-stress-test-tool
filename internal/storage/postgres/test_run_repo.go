@@ -8,6 +8,7 @@ import (
 	"github.com/volcanion-company/volcanion-stress-test-tool/internal/storage/repository"
 )
 
+//nolint:revive // exported name intentionally includes package name for clarity
 type PostgresTestRunRepository struct {
 	db *sql.DB
 }

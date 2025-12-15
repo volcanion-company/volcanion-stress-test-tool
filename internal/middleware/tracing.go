@@ -12,7 +12,7 @@ import (
 const tracerName = "github.com/volcanion-company/volcanion-stress-test-tool/internal/middleware"
 
 // TracingMiddleware adds OpenTelemetry tracing to HTTP requests
-func TracingMiddleware(serviceName string) gin.HandlerFunc {
+func TracingMiddleware(_ string) gin.HandlerFunc {
 	tracer := otel.Tracer(tracerName)
 	propagator := otel.GetTextMapPropagator()
 

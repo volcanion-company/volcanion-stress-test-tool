@@ -12,7 +12,7 @@ export default function TestPlanWizard() {
     name: '',
     target_url: '',
     method: 'GET',
-    concurrent_users: 10,
+    users: 10,
     duration_sec: 60,
     timeout_ms: 5000,
     rate_pattern: 'fixed',
@@ -98,8 +98,8 @@ export default function TestPlanWizard() {
                   max="10000"
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  value={formData.concurrent_users}
-                  onChange={(e) => setFormData({ ...formData, concurrent_users: parseInt(e.target.value) })}
+                  value={formData.users}
+                  onChange={(e) => setFormData({ ...formData, users: parseInt(e.target.value) })}
                 />
               </div>
 

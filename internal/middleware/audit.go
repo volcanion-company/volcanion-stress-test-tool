@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/volcanion-company/volcanion-stress-test-tool/internal/audit"
+	"github.com/volcanion-company/volcanion-stress-test-tool/internal/auth"
 )
 
 // AuditMiddleware creates middleware that logs all API requests
@@ -33,7 +34,7 @@ func AuditMiddleware(auditLogger *audit.Logger) gin.HandlerFunc {
 		}
 
 		if role != nil {
-			roleStr = string(role.(string))
+			roleStr = string(role.(auth.Role))
 		}
 
 		// Create audit event
@@ -69,20 +70,25 @@ func determineEventType(method, path string, statusCode int) audit.EventType {
 	}
 
 	// Map common patterns
+	const (
+		methodPost   = "POST"
+		methodDelete = "DELETE"
+	)
+
 	switch {
-	case method == "POST" && contains(path, "/test-plans"):
+	case method == methodPost && contains(path, "/test-plans"):
 		return audit.EventTestPlanCreated
-	case method == "DELETE" && contains(path, "/test-plans"):
+	case method == methodDelete && contains(path, "/test-plans"):
 		return audit.EventTestPlanDeleted
-	case method == "POST" && contains(path, "/test-runs/start"):
+	case method == methodPost && contains(path, "/test-runs/start"):
 		return audit.EventTestRunStarted
-	case method == "POST" && contains(path, "/test-runs") && contains(path, "/stop"):
+	case method == methodPost && contains(path, "/test-runs") && contains(path, "/stop"):
 		return audit.EventTestRunStopped
-	case method == "POST" && contains(path, "/scenarios") && !contains(path, "/execute"):
+	case method == methodPost && contains(path, "/scenarios") && !contains(path, "/execute"):
 		return audit.EventScenarioCreated
-	case method == "POST" && contains(path, "/scenarios/execute"):
+	case method == methodPost && contains(path, "/scenarios/execute"):
 		return audit.EventScenarioExecuted
-	case method == "DELETE" && contains(path, "/scenarios"):
+	case method == methodDelete && contains(path, "/scenarios"):
 		return audit.EventScenarioDeleted
 	default:
 		return audit.EventType("api.request")
@@ -90,7 +96,7 @@ func determineEventType(method, path string, statusCode int) audit.EventType {
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && s[:] != "" &&
+	return len(s) >= len(substr) && s != "" &&
 		(s == substr || findSubstring(s, substr))
 }
 

@@ -111,11 +111,15 @@ func (r *MetricsSnapshotRepository) GetSnapshots(runID string, start, end time.T
 		}
 
 		if len(statusCodesJSON) > 0 {
-			json.Unmarshal(statusCodesJSON, &snapshot.StatusCodes)
+			if err := json.Unmarshal(statusCodesJSON, &snapshot.StatusCodes); err != nil {
+				return nil, err
+			}
 		}
 
 		if len(errorsJSON) > 0 {
-			json.Unmarshal(errorsJSON, &snapshot.Errors)
+			if err := json.Unmarshal(errorsJSON, &snapshot.Errors); err != nil {
+				return nil, err
+			}
 		}
 
 		snapshots = append(snapshots, snapshot)
@@ -160,11 +164,15 @@ func (r *MetricsSnapshotRepository) GetLatestSnapshots(runID string, limit int) 
 		}
 
 		if len(statusCodesJSON) > 0 {
-			json.Unmarshal(statusCodesJSON, &snapshot.StatusCodes)
+			if err := json.Unmarshal(statusCodesJSON, &snapshot.StatusCodes); err != nil {
+				return nil, err
+			}
 		}
 
 		if len(errorsJSON) > 0 {
-			json.Unmarshal(errorsJSON, &snapshot.Errors)
+			if err := json.Unmarshal(errorsJSON, &snapshot.Errors); err != nil {
+				return nil, err
+			}
 		}
 
 		snapshots = append(snapshots, snapshot)

@@ -22,7 +22,7 @@ export const testPlanService = {
   },
 
   startTest: async (planId: string): Promise<{ run_id: string }> => {
-    const response = await apiClient.post(`/test-plans/${planId}/start`)
+    const response = await apiClient.post(`/test-runs/start`, { plan_id: planId })
     return response.data
   },
 }

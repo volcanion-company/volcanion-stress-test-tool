@@ -89,6 +89,25 @@ func (s *Scheduler) startWorkersWithRampUp(requestChan <-chan struct{}) {
 		rampUpInterval = time.Duration(s.plan.RampUpSec*1000/s.plan.Users) * time.Millisecond
 	}
 
+	// If the calculation results in starting all workers in the first interval,
+	// start them immediately instead of waiting for the first ticker tick.
+	if workersPerInterval >= s.plan.Users {
+		for i := 0; i < s.plan.Users; i++ {
+			worker := NewWorker(i, s.plan, s.metrics, s.sharedClient, s.collector)
+			s.workers = append(s.workers, worker)
+			s.wg.Add(1)
+			go func(w *Worker) {
+				defer s.wg.Done()
+				w.Run(s.ctx, requestChan)
+			}(worker)
+		}
+		s.metrics.SetActiveWorkers(s.plan.Users)
+		s.collector.SetActiveWorkers(s.plan.Users)
+		logger.Log.Info("All workers started immediately (ramp-up calculation)",
+			zap.Int("workers", s.plan.Users))
+		return
+	}
+
 	ticker := time.NewTicker(rampUpInterval)
 	defer ticker.Stop()
 
@@ -136,7 +155,9 @@ func (s *Scheduler) generateRequestsWithPattern(requestChan chan<- struct{}) {
 		s.generateSpikePattern(requestChan)
 	case model.RatePatternRamp:
 		s.generateRampPattern(requestChan)
-	default: // RatePatternFixed or empty
+	case model.RatePatternFixed:
+		s.generateFixedRate(requestChan)
+	default: // empty or unknown
 		s.generateFixedRate(requestChan)
 	}
 }

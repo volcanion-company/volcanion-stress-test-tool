@@ -13,7 +13,6 @@ import (
 
 var (
 	exportFormat string
-	exportRunID  string
 )
 
 var exportCmd = &cobra.Command{
@@ -39,10 +38,13 @@ func init() {
 
 	exportCmd.Flags().StringVarP(&exportFormat, "format", "f", "json", "export format (json, csv, html)")
 	exportCmd.Flags().StringVarP(&outputFile, "output", "o", "", "output file (required)")
-	exportCmd.MarkFlagRequired("output")
+	if err := exportCmd.MarkFlagRequired("output"); err != nil {
+		// If the flag can't be marked required, panic during initialization
+		panic(err)
+	}
 }
 
-func exportResults(cmd *cobra.Command, args []string) error {
+func exportResults(_ *cobra.Command, args []string) error {
 	runID := args[0]
 
 	client := NewAPIClient(GetAPIBaseURL())
@@ -91,7 +93,7 @@ func exportJSON(run, metrics map[string]interface{}, filename string) error {
 		return err
 	}
 
-	return os.WriteFile(filename, jsonData, 0644)
+	return os.WriteFile(filename, jsonData, 0o600)
 }
 
 func exportCSV(metrics map[string]interface{}, filename string) error {

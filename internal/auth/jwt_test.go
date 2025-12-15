@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"testing"
 	"time"
 )
@@ -100,7 +101,7 @@ func TestJWTExpiredToken(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error for expired token")
 	}
-	if err != ErrExpiredToken {
+	if !errors.Is(err, ErrExpiredToken) {
 		t.Errorf("Expected ErrExpiredToken, got %v", err)
 	}
 }
@@ -147,7 +148,7 @@ func TestJWTWrongSecret(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error when validating with wrong secret")
 	}
-	if err != ErrInvalidToken {
+	if !errors.Is(err, ErrInvalidToken) {
 		t.Errorf("Expected ErrInvalidToken, got %v", err)
 	}
 }

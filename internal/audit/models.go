@@ -22,6 +22,8 @@ const (
 )
 
 // AuditEvent represents a single audit log entry
+//
+//nolint:revive // exported name intentionally includes package name for clarity
 type AuditEvent struct {
 	ID         string                 `json:"id"`
 	Timestamp  time.Time              `json:"timestamp"`
@@ -42,6 +44,8 @@ type AuditEvent struct {
 }
 
 // AuditFilter represents filter criteria for querying audit logs
+//
+//nolint:revive // exported name intentionally includes package name for clarity
 type AuditFilter struct {
 	StartTime  *time.Time
 	EndTime    *time.Time

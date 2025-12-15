@@ -196,21 +196,23 @@ func (c *Comparator) PerformanceScore(metrics *model.Metrics) float64 {
 	// Response time score (lower is better): 40%
 	// Normalize response time (assume 1000ms is poor, 100ms is excellent)
 	avgRTScore := 0.0
-	if metrics.AvgLatencyMs <= 100 {
+	switch {
+	case metrics.AvgLatencyMs <= 100:
 		avgRTScore = 40
-	} else if metrics.AvgLatencyMs >= 1000 {
+	case metrics.AvgLatencyMs >= 1000:
 		avgRTScore = 0
-	} else {
+	default:
 		avgRTScore = 40 * (1 - (metrics.AvgLatencyMs-100)/900)
 	}
 
 	// P95 score (lower is better): 20%
 	p95Score := 0.0
-	if metrics.P95LatencyMs <= 200 {
+	switch {
+	case metrics.P95LatencyMs <= 200:
 		p95Score = 20
-	} else if metrics.P95LatencyMs >= 2000 {
+	case metrics.P95LatencyMs >= 2000:
 		p95Score = 0
-	} else {
+	default:
 		p95Score = 20 * (1 - (metrics.P95LatencyMs-200)/1800)
 	}
 

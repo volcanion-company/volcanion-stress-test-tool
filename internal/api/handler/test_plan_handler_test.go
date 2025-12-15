@@ -17,7 +17,7 @@ import (
 
 func init() {
 	gin.SetMode(gin.TestMode)
-	logger.Init("error")
+	_ = logger.Init("error")
 }
 func setupTestService() *service.TestService {
 	planRepo := repository.NewMemoryTestPlanRepository()
@@ -94,13 +94,15 @@ func TestGetTestPlansHandler(t *testing.T) {
 
 	// Create some test plans first
 	for i := 0; i < 3; i++ {
-		svc.CreateTestPlan(&model.CreateTestPlanRequest{
+		if _, err := svc.CreateTestPlan(&model.CreateTestPlanRequest{
 			Name:        "Plan " + string(rune('A'+i)),
 			TargetURL:   "http://localhost:8080",
 			Method:      "GET",
 			Users:       10,
 			DurationSec: 60,
-		})
+		}); err != nil {
+			t.Fatalf("failed to create test plan: %v", err)
+		}
 	}
 
 	router := gin.New()
@@ -130,13 +132,16 @@ func TestGetTestPlanHandler(t *testing.T) {
 	handler := NewTestPlanHandler(svc)
 
 	// Create a test plan
-	plan, _ := svc.CreateTestPlan(&model.CreateTestPlanRequest{
+	plan, err := svc.CreateTestPlan(&model.CreateTestPlanRequest{
 		Name:        "Test Plan",
 		TargetURL:   "http://localhost:8080",
 		Method:      "GET",
 		Users:       10,
 		DurationSec: 60,
 	})
+	if err != nil {
+		t.Fatalf("failed to create test plan: %v", err)
+	}
 
 	router := gin.New()
 	router.GET("/api/test-plans/:id", handler.GetTestPlan)

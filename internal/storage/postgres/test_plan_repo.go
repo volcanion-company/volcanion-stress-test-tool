@@ -6,9 +6,12 @@ import (
 	"time"
 
 	"github.com/volcanion-company/volcanion-stress-test-tool/internal/domain/model"
+	"github.com/volcanion-company/volcanion-stress-test-tool/internal/logger"
 	"github.com/volcanion-company/volcanion-stress-test-tool/internal/storage/repository"
+	"go.uber.org/zap"
 )
 
+//nolint:revive // exported name intentionally includes package name for clarity
 type PostgresTestPlanRepository struct {
 	db *sql.DB
 }
@@ -78,19 +81,28 @@ func (r *PostgresTestPlanRepository) GetByID(id string) (*model.TestPlan, error)
 
 	if len(headersJSON) > 0 {
 		if err := json.Unmarshal(headersJSON, &plan.Headers); err != nil {
-			return nil, err
+			logger.Log.Warn("Failed to unmarshal headers JSON for test plan",
+				zap.String("plan_id", id), zap.Error(err))
+			// continue with empty headers
+			plan.Headers = make(map[string]string)
 		}
 	}
 
 	if len(rateStepsJSON) > 0 {
 		if err := json.Unmarshal(rateStepsJSON, &plan.RateSteps); err != nil {
-			return nil, err
+			logger.Log.Warn("Failed to unmarshal rate steps JSON for test plan",
+				zap.String("plan_id", id), zap.Error(err))
+			// continue with no rate steps
+			plan.RateSteps = nil
 		}
 	}
 
 	if len(slaConfigJSON) > 0 {
 		if err := json.Unmarshal(slaConfigJSON, &plan.SLA); err != nil {
-			return nil, err
+			logger.Log.Warn("Failed to unmarshal SLA config JSON for test plan",
+				zap.String("plan_id", id), zap.Error(err))
+			// continue without SLA
+			plan.SLA = nil
 		}
 	}
 
@@ -128,15 +140,27 @@ func (r *PostgresTestPlanRepository) GetAll() ([]*model.TestPlan, error) {
 		}
 
 		if len(headersJSON) > 0 {
-			json.Unmarshal(headersJSON, &plan.Headers)
+			if err := json.Unmarshal(headersJSON, &plan.Headers); err != nil {
+				logger.Log.Warn("Failed to unmarshal headers JSON for test plan",
+					zap.String("plan_id", plan.ID), zap.Error(err))
+				plan.Headers = make(map[string]string)
+			}
 		}
 
 		if len(rateStepsJSON) > 0 {
-			json.Unmarshal(rateStepsJSON, &plan.RateSteps)
+			if err := json.Unmarshal(rateStepsJSON, &plan.RateSteps); err != nil {
+				logger.Log.Warn("Failed to unmarshal rate steps JSON for test plan",
+					zap.String("plan_id", plan.ID), zap.Error(err))
+				plan.RateSteps = nil
+			}
 		}
 
 		if len(slaConfigJSON) > 0 {
-			json.Unmarshal(slaConfigJSON, &plan.SLA)
+			if err := json.Unmarshal(slaConfigJSON, &plan.SLA); err != nil {
+				logger.Log.Warn("Failed to unmarshal SLA config JSON for test plan",
+					zap.String("plan_id", plan.ID), zap.Error(err))
+				plan.SLA = nil
+			}
 		}
 
 		plans = append(plans, plan)

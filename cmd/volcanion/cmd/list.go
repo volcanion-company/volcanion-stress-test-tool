@@ -11,9 +11,15 @@ import (
 )
 
 var (
-	listType   string
 	listLimit  int
 	listStatus string
+)
+
+const (
+	StatusCompleted = "completed"
+	StatusRunning   = "running"
+	StatusFailed    = "failed"
+	StatusCanceled  = "cancelled"
 )
 
 var listCmd = &cobra.Command{
@@ -44,7 +50,7 @@ func init() {
 	listCmd.Flags().StringVarP(&listStatus, "status", "s", "", "filter by status (for runs)")
 }
 
-func listResources(cmd *cobra.Command, args []string) error {
+func listResources(_ *cobra.Command, args []string) error {
 	resourceType := args[0]
 
 	client := NewAPIClient(GetAPIBaseURL())
@@ -182,17 +188,7 @@ func listRuns(client *APIClient) error {
 		}
 
 		// Color status
-		statusStr := status
-		switch status {
-		case "completed":
-			statusStr = color.GreenString(status)
-		case "running":
-			statusStr = color.BlueString(status)
-		case "failed":
-			statusStr = color.RedString(status)
-		case "cancelled":
-			statusStr = color.YellowString(status)
-		}
+		statusStr := colorizeStatus(status)
 
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
 			color.CyanString(id[:8]),
@@ -213,4 +209,19 @@ func truncate(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen-3] + "..."
+}
+
+func colorizeStatus(status string) string {
+	switch status {
+	case StatusCompleted:
+		return color.GreenString(status)
+	case StatusRunning:
+		return color.BlueString(status)
+	case StatusFailed:
+		return color.RedString(status)
+	case StatusCanceled:
+		return color.YellowString(status)
+	default:
+		return status
+	}
 }

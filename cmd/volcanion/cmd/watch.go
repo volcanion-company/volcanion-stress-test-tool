@@ -63,7 +63,11 @@ func watchTest(client *APIClient, runID string) error {
 		// Update progress bar
 		if bar != nil && metrics["total_duration_ms"] != nil {
 			elapsed := int(metrics["total_duration_ms"].(float64) / 1000)
-			bar.Set(elapsed)
+			if err := bar.Set(elapsed); err != nil {
+				if IsVerbose() {
+					printError(fmt.Sprintf("progressbar set: %v", err))
+				}
+			}
 		}
 
 		// Print live stats
@@ -71,7 +75,8 @@ func watchTest(client *APIClient, runID string) error {
 		printLiveStats(metrics)
 
 		// Check if completed
-		if status == "completed" || status == "failed" || status == "cancelled" {
+		//nolint:misspell // domain uses British spelling 'cancelled' for stored status values
+		if status == StatusCompleted || status == StatusFailed || status == StatusCanceled {
 			fmt.Println()
 			printSuccess(fmt.Sprintf("Test %s!", status))
 			return nil

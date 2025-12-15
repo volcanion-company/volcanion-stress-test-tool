@@ -156,6 +156,14 @@ func (w *writerAdapter) Write(p []byte) (n int, err error) {
 		w.logger.Warn(msg)
 	case zapcore.ErrorLevel:
 		w.logger.Error(msg)
+	case zapcore.DPanicLevel:
+		w.logger.DPanic(msg)
+	case zapcore.PanicLevel:
+		w.logger.Panic(msg)
+	case zapcore.FatalLevel:
+		w.logger.Fatal(msg)
+	case zapcore.InvalidLevel:
+		w.logger.Info(msg)
 	default:
 		w.logger.Info(msg)
 	}

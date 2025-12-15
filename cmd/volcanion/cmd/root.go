@@ -38,8 +38,12 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 
 	// Bind flags to viper
-	viper.BindPFlag("api", rootCmd.PersistentFlags().Lookup("api"))
-	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
+	if err := viper.BindPFlag("api", rootCmd.PersistentFlags().Lookup("api")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose")); err != nil {
+		panic(err)
+	}
 }
 
 func initConfig() {

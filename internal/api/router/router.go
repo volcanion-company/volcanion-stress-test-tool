@@ -19,6 +19,8 @@ import (
 var swaggerUI embed.FS
 
 // RouterConfig holds configuration for router setup
+//
+//nolint:revive // exported name intentionally includes package name for clarity
 type RouterConfig struct {
 	TestPlanHandler     *handler.TestPlanHandler
 	TestRunHandler      *handler.TestRunHandler

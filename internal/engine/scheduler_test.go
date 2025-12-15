@@ -12,7 +12,9 @@ import (
 )
 
 func init() {
-	logger.Init("error")
+	if err := logger.Init("error"); err != nil {
+		panic(err)
+	}
 }
 
 func TestNewScheduler(t *testing.T) {
@@ -44,10 +46,10 @@ func TestNewScheduler(t *testing.T) {
 func TestSchedulerStartAndStop(t *testing.T) {
 	// Create a test server that responds immediately
 	var requestCount int64
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt64(&requestCount, 1)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	}))
 	defer server.Close()
 
@@ -87,7 +89,7 @@ func TestSchedulerStartAndStop(t *testing.T) {
 }
 
 func TestSchedulerRampUp(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -138,7 +140,7 @@ func TestSchedulerRampUp(t *testing.T) {
 }
 
 func TestSchedulerMetricsCollection(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(10 * time.Millisecond) // Add some latency
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -195,7 +197,7 @@ func TestSchedulerMetricsCollection(t *testing.T) {
 
 func TestSchedulerLoadPatternConstant(t *testing.T) {
 	var requestCount int64
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt64(&requestCount, 1)
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -241,7 +243,7 @@ func TestSchedulerLoadPatternConstant(t *testing.T) {
 
 func TestSchedulerContextCancellation(t *testing.T) {
 	var requestCount int64
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt64(&requestCount, 1)
 		time.Sleep(50 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
@@ -285,7 +287,7 @@ func TestSchedulerContextCancellation(t *testing.T) {
 }
 
 func TestSchedulerWait(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()

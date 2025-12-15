@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // imported for side-effects: registers the postgres driver
 	"go.uber.org/zap"
 )
 
@@ -63,7 +63,20 @@ func NewDB(cfg DBConfig, logger *zap.Logger) (*sql.DB, error) {
 
 		lastErr = err
 		if attempt < maxRetries {
-			waitTime := retryInterval * time.Duration(1<<uint(attempt-1)) // Exponential backoff
+			// Cap exponent to avoid large shifts and potential overflow
+			exp := attempt - 1
+			if exp < 0 {
+				exp = 0
+			}
+			if exp > 10 {
+				exp = 10
+			}
+			// Build multiplier by repeated doubling to avoid integer->uint conversions
+			mult := time.Duration(1)
+			for i := 0; i < exp; i++ {
+				mult *= 2
+			}
+			waitTime := retryInterval * mult // Exponential backoff (capped)
 			if waitTime > 30*time.Second {
 				waitTime = 30 * time.Second // Cap at 30 seconds
 			}

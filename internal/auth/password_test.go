@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"testing"
 )
 
@@ -200,7 +201,7 @@ func TestPasswordTooShort(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error for short password")
 	}
-	if err != ErrPasswordTooWeak {
+	if !errors.Is(err, ErrPasswordTooWeak) {
 		t.Errorf("Expected ErrPasswordTooWeak, got %v", err)
 	}
 }
